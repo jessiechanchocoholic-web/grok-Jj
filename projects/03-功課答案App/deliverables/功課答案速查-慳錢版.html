@@ -261,7 +261,7 @@
     <label for="modelSelect">揀 AI</label>
     <select id="modelSelect">
       <option value="GPT-4o-mini">慳錢 GPT-4o-mini</option>
-      <option value="Claude-Haiku-5.5">平衡 Claude-Haiku-5.5</option>
+      <option value="Claude-Haiku-5.5" selected>平衡 Claude-Haiku-5.5（預設）</option>
       <option value="Claude-Sonnet-5.5">最準 Claude-Sonnet-5.5</option>
     </select>
     <div class="model-hint">難嘅數學題建議揀「最準」</div>
@@ -335,7 +335,7 @@
   var imgCountLabel = document.getElementById('imgCountLabel');
   var btnAnalyze = document.getElementById('btnAnalyze');
   var modelSelect = document.getElementById('modelSelect');
-  var MODEL_KEY = 'hwModel';
+  var MODEL_KEY = 'hwModel2';
   var usedModel = '';
   try { var savedModel = localStorage.getItem(MODEL_KEY); if (savedModel && modelSelect.querySelector('option[value="' + savedModel + '"]')) modelSelect.value = savedModel; } catch (_e) {}
   modelSelect.addEventListener('change', function() { try { localStorage.setItem(MODEL_KEY, modelSelect.value); } catch (_e) {} });
