@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>功課答案速查</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #FFF8F0;
+    --bg-secondary: #FFFFFF;
+    --bg-accent: #FFF0E0;
+    --text-primary: #2D1B0E;
+    --text-secondary: #6B5744;
+    --text-muted: #A08B78;
+    --accent: #FF6B35;
+    --accent-light: #FF8F5E;
+    --accent-dark: #E05520;
+    --accent-glow: rgba(255, 107, 53, 0.25);
+    --success: #2ECC71;
+    --error: #E74C3C;
+    --border: rgba(45, 27, 14, 0.08);
+    --card-shadow: 0 2px 20px rgba(45, 27, 14, 0.06);
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
+  html.dark {
+    --bg-primary: #1A1210;
+    --bg-secondary: #241C18;
+    --bg-accent: #2E2219;
+    --text-primary: #F5E6D8;
+    --text-secondary: #C4A78E;
+    --text-muted: #8A7260;
+    --accent: #FF7A4A;
+    --accent-light: #FF9B70;
+    --accent-dark: #E06530;
+    --accent-glow: rgba(255, 122, 74, 0.2);
+    --border: rgba(245, 230, 216, 0.08);
+    --card-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans TC', 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background:
+      radial-gradient(ellipse at 20% 20%, var(--accent-glow) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(255, 165, 0, 0.08) 0%, transparent 50%);
+    animation: bgFloat 20s ease-in-out infinite;
+    pointer-events: none; z-index: 0;
+  }
+  @keyframes bgFloat {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(2%, -2%) rotate(1deg); }
+    66% { transform: translate(-1%, 1%) rotate(-0.5deg); }
+  }
+  .app { position: relative; z-index: 1; max-width: 500px; margin: 0 auto; padding: 20px 16px 40px; min-height: 100vh; }
+
+  /* Header */
+  .header { text-align: center; padding: 20px 0 18px; animation: slideDown 0.6s ease-out; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  .header .logo { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-radius: 15px; margin-bottom: 10px; box-shadow: 0 4px 20px var(--accent-glow); }
+  .header .logo i { font-size: 24px; color: #fff; }
+  .header h1 { font-family: 'Outfit', 'Noto Sans TC', sans-serif; font-size: 25px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .header p { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+  .counter-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 4px 12px; background: var(--bg-accent); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .counter-badge i { font-size: 11px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Upload zone */
+  .upload-section { animation: fadeUp 0.6s ease-out 0.1s both; }
+  .upload-zone { position: relative; background: var(--bg-secondary); border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--card-shadow); }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--bg-accent); transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+  .upload-zone.has-images { padding: 16px; border-style: solid; border-color: var(--accent); cursor: default; }
+  .upload-zone input[type="file"] { display: none; }
+  .upload-icon { width: 64px; height: 64px; margin: 0 auto 14px; background: linear-gradient(135deg, var(--accent-glow), rgba(255, 165, 0, 0.1)); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
+  .upload-zone:hover .upload-icon { transform: scale(1.1); }
+  .upload-icon i { font-size: 28px; color: var(--accent); }
+  .upload-text h3 { font-size: 16px; font-weight: 700; margin-bottom: 5px; }
+  .upload-text p { font-size: 12px; color: var(--text-muted); }
+
+  /* Image grid */
+  .img-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+  .img-grid.single { grid-template-columns: 1fr; }
+  .img-thumb { position: relative; border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-accent); aspect-ratio: 4/3; }
+  .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .img-thumb .remove-one { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); border: none; color: #fff; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; opacity: 0; }
+  .img-thumb:hover .remove-one { opacity: 1; }
+  .img-thumb .remove-one:hover { background: rgba(231, 76, 60, 0.8); }
+  /* Touch: always show remove button */
+  @media (hover: none) { .img-thumb .remove-one { opacity: 1; } }
+
+  .add-more-zone { display: flex; align-items: center; justify-content: center; border: 2px dashed var(--border); border-radius: var(--radius-sm); cursor: pointer; gap: 6px; font-size: 13px; color: var(--text-muted); font-weight: 500; transition: all 0.2s; aspect-ratio: 4/3; }
+  .add-more-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-accent); }
+  .add-more-zone i { font-size: 18px; }
+  .img-count-label { text-align: center; font-size: 12px; color: var(--text-muted); }
+
+  /* Buttons */
+  .model-bar { margin-top: 14px; }
+  .model-bar label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .model-bar select { width: 100%; padding: 12px; font-size: 16px; font-family: 'Noto Sans TC', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-secondary); color: inherit; }
+  .model-bar .model-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+  .result-header .model-tag { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+  .action-bar { margin-top: 14px; animation: fadeUp 0.6s ease-out 0.2s both; }
+  .btn-main { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; transition: all 0.3s ease; box-shadow: 0 4px 16px var(--accent-glow); position: relative; overflow: hidden; }
+  .btn-main::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%); transform: translateX(-100%); transition: transform 0.5s ease; }
+  .btn-main:hover::after { transform: translateX(100%); }
+  .btn-main:hover { transform: translateY(-2px); box-shadow: 0 6px 24px var(--accent-glow); }
+  .btn-main:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-main:disabled::after { display: none; }
+  .btn-main i { font-size: 18px; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .btn-next { flex: 1; padding: 13px 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 3px 12px var(--accent-glow); }
+  .btn-next:hover { transform: translateY(-1px); box-shadow: 0 5px 20px var(--accent-glow); }
+  .btn-next i { font-size: 15px; }
+  .btn-discard { padding: 13px 18px; background: var(--bg-secondary); color: var(--error); border: 1px solid var(--error); border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s; }
+  .btn-discard:hover { background: var(--error); color: #fff; }
+  .btn-discard i { font-size: 14px; }
+
+  /* Loading */
+  .loading-section { display: none; text-align: center; padding: 36px 20px; animation: fadeUp 0.4s ease-out; }
+  .loading-dots { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
+  .loading-dots span { width: 11px; height: 11px; border-radius: 50%; background: var(--accent); animation: dotBounce 1.4s ease-in-out infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.16s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes dotBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+  .loading-section p { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+  .loading-section .sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; font-weight: 400; }
+
+  /* Current result area */
+  .current-result { display: none; margin-top: 18px; animation: fadeUp 0.5s ease-out; }
+  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .icon-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
+  .icon-circle.ok { background: linear-gradient(135deg, var(--success), #27ae60); }
+  .icon-circle.loading { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
+  .result-header h2 { font-size: 17px; font-weight: 700; }
+
+  .result-card { background: var(--bg-secondary); border-radius: var(--radius); padding: 22px 18px; box-shadow: var(--card-shadow); border: 1px solid var(--border); line-height: 1.8; font-size: 15px; }
+  .result-card h1,.result-card h2,.result-card h3,.result-card h4 { margin: 14px 0 6px; font-weight: 700; line-height: 1.4; }
+  .result-card h1 { font-size: 19px; } .result-card h2 { font-size: 17px; } .result-card h3 { font-size: 15px; }
+  .result-card h1:first-child,.result-card h2:first-child,.result-card h3:first-child { margin-top: 0; }
+  .result-card p { margin: 6px 0; }
+  .result-card ul,.result-card ol { padding-left: 20px; margin: 6px 0; }
+  .result-card li { margin: 3px 0; }
+  .result-card strong { color: var(--accent); font-weight: 700; }
+  .result-card code { background: var(--bg-accent); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Courier New', monospace; }
+  .result-card pre { background: var(--bg-accent); padding: 10px 14px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0; }
+  .result-card pre code { background: none; padding: 0; }
+  .result-card blockquote { border-left: 3px solid var(--accent); padding-left: 14px; margin: 8px 0; color: var(--text-secondary); }
+  .result-card table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+  .result-card th,.result-card td { padding: 7px 10px; border: 1px solid var(--border); text-align: left; }
+  .result-card th { background: var(--bg-accent); font-weight: 700; }
+  .result-card hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .result-card img { max-width: 100%; border-radius: var(--radius-sm); }
+
+  /* Error */
+  .error-card { background: var(--bg-secondary); border: 1px solid var(--error); border-radius: var(--radius); padding: 18px; display: flex; align-items: flex-start; gap: 12px; }
+  .error-card > i { color: var(--error); font-size: 18px; margin-top: 2px; flex-shrink: 0; }
+  .error-card .error-msg { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+  .btn-retry { margin-top: 12px; padding: 9px 18px; background: var(--bg-accent); color: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-retry:hover { background: var(--accent); color: #fff; }
+
+  /* History */
+  .history-section { margin-top: 28px; }
+  .history-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .history-title h3 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .history-title h3 i { color: var(--accent); font-size: 14px; }
+  .btn-clear-all { background: none; border: none; color: var(--text-muted); font-size: 12px; font-family: 'Noto Sans TC', sans-serif; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s; }
+  .btn-clear-all:hover { color: var(--error); background: rgba(231, 76, 60, 0.1); }
+
+  .history-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; box-shadow: var(--card-shadow); animation: fadeUp 0.35s ease-out; }
+  .history-head { display: flex; align-items: center; padding: 14px 16px; gap: 12px; cursor: pointer; transition: background 0.2s; }
+  .history-head:hover { background: var(--bg-accent); }
+  .history-num { width: 30px; height: 30px; border-radius: 50%; background: var(--bg-accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+  .history-meta { flex: 1; min-width: 0; }
+  .history-meta .label { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-meta .time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .history-thumbs { display: flex; gap: 4px; flex-shrink: 0; }
+  .history-thumbs img { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; }
+  .history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .history-toggle, .history-del { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+  .history-toggle { background: var(--bg-accent); color: var(--text-muted); }
+  .history-toggle:hover { color: var(--accent); }
+  .history-toggle i { transition: transform 0.3s; }
+  .history-toggle.open i { transform: rotate(180deg); }
+  .history-del { background: transparent; color: var(--text-muted); }
+  .history-del:hover { background: rgba(231, 76, 60, 0.1); color: var(--error); }
+  .history-body { display: none; padding: 0 16px 16px; }
+  .history-body.open { display: block; }
+  .history-body .result-card { font-size: 14px; padding: 16px 14px; }
+
+  /* Tips */
+  .tips-section { margin-top: 24px; animation: fadeUp 0.6s ease-out 0.35s both; }
+  .tips-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px; }
+  .tip-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .tip-item i { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--bg-accent); color: var(--accent); font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; animation: fadeIn 0.2s ease-out; padding: 20px; }
+  .modal-box { background: var(--bg-secondary); border-radius: var(--radius); padding: 26px 22px; max-width: 320px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal-box p { font-size: 15px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.6; }
+  .modal-btns { display: flex; gap: 10px; justify-content: center; }
+  .mbtn { padding: 9px 22px; border-radius: var(--radius-sm); font-family: 'Noto Sans TC', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+  .mbtn.ok { background: var(--accent); color: #fff; }
+  .mbtn.ok:hover { background: var(--accent-dark); }
+  .mbtn.cancel { background: var(--bg-accent); color: var(--text-secondary); }
+  .mbtn.cancel:hover { background: var(--border); }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+  @media (max-width: 360px) { .app { padding: 14px 10px 32px; } .header h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><i class="fas fa-graduation-cap"></i></div>
+    <h1>功課答案速查</h1>
+    <p>影張相，即刻出答案</p>
+    <div class="counter-badge" id="counterBadge" style="display:none;">
+      <i class="fas fa-check-circle"></i>
+      <span id="counterText">已完成 0 份</span>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-section" id="uploadSection">
+    <div class="upload-zone" id="uploadZone">
+      <div id="uploadPlaceholder">
+        <div class="upload-icon"><i class="fas fa-camera"></i></div>
+        <div class="upload-text">
+          <h3>拍攝或上傳功課相片</h3>
+          <p>可一次選取 1 至 4 頁 · 點擊拍照或選圖</p>
+        </div>
+      </div>
+      <div id="imgGridWrap" style="display:none;">
+        <div class="img-grid" id="imgGrid"></div>
+        <div class="img-count-label" id="imgCountLabel"></div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+  </div>
+
+  <!-- Analyze button -->
+  <div class="model-bar">
+    <label for="modelSelect">揀 AI</label>
+    <select id="modelSelect">
+      <option value="GPT-4o-mini">慳錢 GPT-4o-mini</option>
+      <option value="Claude-Haiku-5.5">平衡 Claude-Haiku-5.5</option>
+      <option value="Claude-Sonnet-5.5">最準 Claude-Sonnet-5.5</option>
+    </select>
+    <div class="model-hint">難嘅數學題建議揀「最準」</div>
+  </div>
+  <div class="action-bar" id="actionBar">
+    <button class="btn-main" id="btnAnalyze" disabled>
+      <i class="fas fa-magnifying-glass"></i>
+      <span>搵答案</span>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-section" id="loadingSection">
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <p>AI 正在分析你嘅功課⋯</p>
+    <p class="sub">通常需要幾秒鐘</p>
+  </div>
+
+  <!-- Current result -->
+  <div class="current-result" id="currentResult"></div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection" style="display:none;"></div>
+
+  <!-- Tips -->
+  <div class="tips-section" id="tipsSection">
+    <div class="tips-title">小貼士</div>
+    <div class="tip-item">
+      <i class="fas fa-lightbulb"></i>
+      <span>盡量影清楚啲，字體越清晰答案越準確</span>
+    </div>
+    <div class="tip-item">
+      <i class="fas fa-crop-simple"></i>
+      <span>一次影一至四頁就好，太多題目會影響準確度</span>
+    </div>
+    <div class="tip-item">
+      <i class="fas fa-language"></i>
+      <span>支援中文、英文、數學、人文、科學、常識等各科功課</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  /* ── Dark mode ── */
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    document.documentElement.classList.toggle('dark', e.matches);
+  });
+
+  /* ── Marked config ── */
+  marked.setOptions({ breaks: true, gfm: true });
+
+  /* ── State ── */
+  var selectedFiles = [];       // current images (File[])
+  var previewUrls = [];         // data URLs for previews
+  var history = [];             // { id, thumbs[], content, timestamp }
+  var idCounter = 0;
+  var isAnalyzing = false;
+
+  /* ── DOM refs ── */
+  var uploadZone = document.getElementById('uploadZone');
+  var fileInput = document.getElementById('fileInput');
+  var uploadPlaceholder = document.getElementById('uploadPlaceholder');
+  var imgGridWrap = document.getElementById('imgGridWrap');
+  var imgGrid = document.getElementById('imgGrid');
+  var imgCountLabel = document.getElementById('imgCountLabel');
+  var btnAnalyze = document.getElementById('btnAnalyze');
+  var modelSelect = document.getElementById('modelSelect');
+  var MODEL_KEY = 'hwModel';
+  var usedModel = '';
+  try { var savedModel = localStorage.getItem(MODEL_KEY); if (savedModel && modelSelect.querySelector('option[value="' + savedModel + '"]')) modelSelect.value = savedModel; } catch (_e) {}
+  modelSelect.addEventListener('change', function() { try { localStorage.setItem(MODEL_KEY, modelSelect.value); } catch (_e) {} });
+  var actionBar = document.getElementById('actionBar');
+  var uploadSection = document.getElementById('uploadSection');
+  var loadingSection = document.getElementById('loadingSection');
+  var currentResult = document.getElementById('currentResult');
+  var historySection = document.getElementById('historySection');
+  var tipsSection = document.getElementById('tipsSection');
+  var counterBadge = document.getElementById('counterBadge');
+  var counterText = document.getElementById('counterText');
+
+  /* ── Upload click ── */
+  uploadZone.addEventListener('click', function(e) {
+    if (isAnalyzing) return;
+    // don't trigger if clicking a remove button or add-more zone handles itself
+    if (e.target.closest('.remove-one')) return;
+    if (e.target.closest('.add-more-zone')) { fileInput.click(); return; }
+    if (selectedFiles.length === 0) fileInput.click();
+  });
+
+  /* ── Drag & drop ── */
+  uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
+  uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files) addFiles(Array.from(e.dataTransfer.files));
+  });
+
+  /* ── File input ── */
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files) addFiles(Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+
+  function addFiles(files) {
+    var imgs = files.filter(function(f) { return f.type.startsWith('image/'); });
+    if (imgs.length === 0) { showNotice('請選擇圖片檔案'); return; }
+
+    var remaining = 4 - selectedFiles.length;
+    if (remaining <= 0) { showNotice('最多只可以上傳 4 張相片'); return; }
+    var toAdd = imgs.slice(0, remaining);
+
+    var loaded = 0;
+    toAdd.forEach(function(file) {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        selectedFiles.push(file);
+        previewUrls.push(ev.target.result);
+        loaded++;
+        if (loaded === toAdd.length) renderGrid();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    previewUrls.splice(idx, 1);
+    renderGrid();
+  }
+
+  function renderGrid() {
+    var n = selectedFiles.length;
+    if (n === 0) {
+      imgGridWrap.style.display = 'none';
+      uploadPlaceholder.style.display = '';
+      uploadZone.classList.remove('has-images');
+      btnAnalyze.disabled = true;
+      return;
+    }
+    uploadPlaceholder.style.display = 'none';
+    imgGridWrap.style.display = 'block';
+    uploadZone.classList.add('has-images');
+    btnAnalyze.disabled = false;
+
+    imgGrid.className = 'img-grid' + (n === 1 ? ' single' : '');
+    var html = '';
+    for (var i = 0; i < n; i++) {
+      html += '<div class="img-thumb">' +
+        '<img src="' + previewUrls[i] + '" alt="第' + (i + 1) + '頁">' +
+        '<button class="remove-one" data-idx="' + i + '" title="移除"><i class="fas fa-xmark"></i></button>' +
+        '</div>';
+    }
+    if (n < 4) {
+      html += '<div class="add-more-zone" id="addMoreBtn"><i class="fas fa-plus"></i>加相</div>';
+    }
+    imgGrid.innerHTML = html;
+    imgCountLabel.textContent = n + ' / 4 頁';
+
+    // bind remove
+    imgGrid.querySelectorAll('.remove-one').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeFile(parseInt(btn.dataset.idx, 10));
+      });
+    });
+  }
+
+  function clearAllImages() {
+    selectedFiles = [];
+    previewUrls = [];
+    renderGrid();
+  }
+
+  /* ── Analyze ── */
+  btnAnalyze.addEventListener('click', function() {
+    if (selectedFiles.length === 0 || isAnalyzing) return;
+    analyzeHomework();
+  });
+
+  /* ── Handler ── */
+  var currentContent = '';
+  window.Poe.registerHandler('answer-handler', function(result) {
+    var msg = result.responses[0];
+    if (msg.status === 'error') {
+      loadingSection.style.display = 'none';
+      showError(msg.statusText || '分析時發生錯誤，請再試一次');
+      isAnalyzing = false;
+      return;
+    }
+    if (msg.status === 'incomplete') {
+      loadingSection.style.display = 'none';
+      currentContent = msg.content;
+      renderCurrentResult(msg.content, false);
+      return;
+    }
+    if (msg.status === 'complete') {
+      loadingSection.style.display = 'none';
+      currentContent = msg.content;
+      renderCurrentResult(msg.content, true);
+      isAnalyzing = false;
+    }
+  });
+
+  async function analyzeHomework() {
+    isAnalyzing = true;
+    btnAnalyze.disabled = true;
+    btnAnalyze.querySelector('span').textContent = '分析中⋯';
+    loadingSection.style.display = 'block';
+    currentResult.style.display = 'none';
+    currentResult.innerHTML = '';
+    tipsSection.style.display = 'none';
+    currentContent = '';
+
+    var pageWord = selectedFiles.length > 1 ? selectedFiles.length + '頁' : '呢張';
+    var prompt = '請睇' + pageWord + '功課相片，逐題俾正確答案同簡短解釋。\n' +
+      '- 用繁體中文，逐題清楚列出\n' +
+      '- 功課已有答案就指出啱定錯\n' +
+      '- 數學要列式同顯示計算步驟\n' +
+      '- 多頁要逐頁標明';
+    usedModel = modelSelect.value;
+
+    try {
+      await window.Poe.sendUserMessage('@' + usedModel + ' ' + prompt, {
+        handler: 'answer-handler',
+        stream: true,
+        openChat: false,
+        attachments: selectedFiles.slice(),
+        parameters: {}
+      });
+    } catch (err) {
+      loadingSection.style.display = 'none';
+      isAnalyzing = false;
+      var errorMsg = '發送失敗';
+      if (err && err.errorType === 'USER_REJECTED_CONFIRMATION') errorMsg = '已取消操作';
+      else if (err && err.message) errorMsg = err.message;
+      showError(errorMsg);
+      resetAnalyzeBtn();
+    }
+  }
+
+  /* ── Render current result ── */
+  function renderCurrentResult(content, isComplete) {
+    currentResult.style.display = 'block';
+    var parsed = '';
+    try { parsed = marked.parse(content || ''); } catch (_e) { parsed = (content || '').replace(/\n/g, '<br>'); }
+
+    var iconHtml = isComplete
+      ? '<div class="icon-circle ok"><i class="fas fa-check"></i></div>'
+      : '<div class="icon-circle loading"><i class="fas fa-spinner fa-spin"></i></div>';
+    var label = isComplete ? '答案結果' : '正在生成答案⋯';
+
+    var buttonsHtml = '';
+    if (isComplete) {
+      buttonsHtml = '<div class="btn-row">' +
+        '<button class="btn-next" id="btnNext"><i class="fas fa-arrow-right"></i> 下一份功課</button>' +
+        '<button class="btn-discard" id="btnDiscard"><i class="fas fa-trash-can"></i> 刪除</button>' +
+        '</div>';
+    }
+
+    currentResult.innerHTML =
+      '<div class="result-header">' + iconHtml + '<h2>' + label + '</h2>' + (usedModel ? '<span class="model-tag">AI：' + usedModel + '</span>' : '') + '</div>' +
+      '<div class="result-card">' + parsed + '</div>' +
+      buttonsHtml;
+
+    if (isComplete) {
+      resetAnalyzeBtn();
+      document.getElementById('btnNext').addEventListener('click', handleNext);
+      document.getElementById('btnDiscard').addEventListener('click', handleDiscard);
+    }
+  }
+
+  function handleNext() {
+    // Save to history
+    idCounter++;
+    history.unshift({
+      id: idCounter,
+      thumbs: previewUrls.slice(),
+      content: currentContent,
+      timestamp: new Date()
+    });
+    finishAndReset();
+    renderHistory();
+    updateCounter();
+  }
+
+  function handleDiscard() {
+    showConfirm('確定刪除呢份答案？', function() {
+      finishAndReset();
+    });
+  }
+
+  function finishAndReset() {
+    currentResult.style.display = 'none';
+    currentResult.innerHTML = '';
+    currentContent = '';
+    clearAllImages();
+    uploadSection.style.display = '';
+    actionBar.style.display = '';
+    tipsSection.style.display = '';
+    resetAnalyzeBtn();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetAnalyzeBtn() {
+    btnAnalyze.disabled = selectedFiles.length === 0;
+    btnAnalyze.querySelector('span').textContent = '搵答案';
+  }
+
+  /* ── History ── */
+  function renderHistory() {
+    if (history.length === 0) { historySection.style.display = 'none'; return; }
+    historySection.style.display = 'block';
+
+    var html = '<div class="history-title"><h3><i class="fas fa-clock-rotate-left"></i> 過往紀錄</h3>' +
+      '<button class="btn-clear-all" id="btnClearAll">全部清除</button></div>';
+
+    history.forEach(function(item, idx) {
+      var thumbsHtml = '';
+      item.thumbs.slice(0, 3).forEach(function(t) {
+        thumbsHtml += '<img src="' + t + '" alt="">';
+      });
+      if (item.thumbs.length > 3) thumbsHtml += '<span style="font-size:11px;color:var(--text-muted)">+' + (item.thumbs.length - 3) + '</span>';
+
+      var timeStr = formatTime(item.timestamp);
+      var preview = stripToText(item.content).substring(0, 40) + '⋯';
+
+      html += '<div class="history-item" data-hid="' + item.id + '">' +
+        '<div class="history-head">' +
+          '<div class="history-num">' + (history.length - idx) + '</div>' +
+          '<div class="history-meta"><div class="label">' + escapeHtml(preview) + '</div><div class="time">' + timeStr + '</div></div>' +
+          '<div class="history-thumbs">' + thumbsHtml + '</div>' +
+          '<div class="history-actions">' +
+            '<button class="history-toggle" data-hid="' + item.id + '"><i class="fas fa-chevron-down"></i></button>' +
+            '<button class="history-del" data-hid="' + item.id + '" title="刪除"><i class="fas fa-trash-can"></i></button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="history-body" id="hbody-' + item.id + '"><div class="result-card">' + safeMarkdown(item.content) + '</div></div>' +
+        '</div>';
+    });
+
+    historySection.innerHTML = html;
+
+    // Bind events
+    historySection.querySelectorAll('.history-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var hid = btn.dataset.hid;
+        var body = document.getElementById('hbody-' + hid);
+        var isOpen = body.classList.contains('open');
+        body.classList.toggle('open');
+        btn.classList.toggle('open');
+        if (!isOpen) body.style.display = 'block';
+        else body.style.display = 'none';
+      });
+    });
+
+    historySection.querySelectorAll('.history-head').forEach(function(head) {
+      head.addEventListener('click', function(e) {
+        if (e.target.closest('.history-del') || e.target.closest('.history-toggle')) return;
+        var hid = head.closest('.history-item').dataset.hid;
+        var toggleBtn = head.querySelector('.history-toggle');
+        if (toggleBtn) toggleBtn.click();
+      });
+    });
+
+    historySection.querySelectorAll('.history-del').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var hid = parseInt(btn.dataset.hid, 10);
+        showConfirm('確定刪除呢條紀錄？', function() {
+          history = history.filter(function(h) { return h.id !== hid; });
+          renderHistory();
+          updateCounter();
+        });
+      });
+    });
+
+    var clearAllBtn = document.getElementById('btnClearAll');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', function() {
+        showConfirm('確定清除所有紀錄？', function() {
+          history = [];
+          renderHistory();
+          updateCounter();
+        });
+      });
+    }
+  }
+
+  function updateCounter() {
+    var total = history.length;
+    if (total > 0) {
+      counterBadge.style.display = '';
+      counterText.textContent = '已完成 ' + total + ' 份';
+    } else {
+      counterBadge.style.display = 'none';
+    }
+  }
+
+  /* ── Error ── */
+  function showError(msg) {
+    currentResult.style.display = 'block';
+    currentResult.innerHTML =
+      '<div class="error-card"><i class="fas fa-triangle-exclamation"></i><div>' +
+        '<div class="error-msg">' + escapeHtml(msg) + '</div>' +
+        '<button class="btn-retry" id="btnRetry">重新嘗試</button>' +
+      '</div></div>';
+
+    document.getElementById('btnRetry').addEventListener('click', function() {
+      if (selectedFiles.length > 0) analyzeHomework();
+    });
+    resetAnalyzeBtn();
+  }
+
+  /* ── Modals ── */
+  function showNotice(msg) {
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop';
+    el.innerHTML = '<div class="modal-box"><p>' + escapeHtml(msg) + '</p><div class="modal-btns"><button class="mbtn ok">好的</button></div></div>';
+    document.body.appendChild(el);
+    el.querySelector('.mbtn.ok').addEventListener('click', function() { el.remove(); });
+    el.addEventListener('click', function(e) { if (e.target === el) el.remove(); });
+  }
+
+  function showConfirm(msg, onYes) {
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop';
+    el.innerHTML = '<div class="modal-box"><p>' + escapeHtml(msg) + '</p><div class="modal-btns">' +
+      '<button class="mbtn cancel">取消</button><button class="mbtn ok">確定</button></div></div>';
+    document.body.appendChild(el);
+    el.querySelector('.mbtn.cancel').addEventListener('click', function() { el.remove(); });
+    el.querySelector('.mbtn.ok').addEventListener('click', function() { el.remove(); onYes(); });
+    el.addEventListener('click', function(e) { if (e.target === el) el.remove(); });
+  }
+
+  /* ── Helpers ── */
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+  function stripToText(md) {
+    return (md || '').replace(/[#*_`~>\-|[\]()!]/g, '').replace(/\n+/g, ' ').trim();
+  }
+  function safeMarkdown(content) {
+    try { return marked.parse(content || ''); } catch (_e) { return escapeHtml(content || ''); }
+  }
+  function formatTime(d) {
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var ampm = h >= 12 ? '下午' : '上午';
+    var hh = h % 12 || 12;
+    return ampm + ' ' + hh + ':' + (m < 10 ? '0' : '') + m;
+  }
+})();
+</script>
+</body>
+</html>
+
