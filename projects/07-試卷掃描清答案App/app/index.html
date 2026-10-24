@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-  <title>試卷掃描＋自動清答案出卷王｜補習中心專用（免費無限・無浮水印）</title>
-  <meta name="description" content="香港補習社專用：手機/iPad 即時影相或匯入舊作業 PDF，一鍵清走藍筆手寫答案、紅筆批改、鉛筆草稿、去黑影漂白、遮蓋學生姓名與學校名，即出高清空白 A4 PDF 列印。" />
+  <title>試卷掃描＋自動清答案出卷王 v2.0｜補習中心極速版（免費無限・雙版本留底）</title>
+  <meta name="description" content="香港補習社專用：手機/iPad 極速連拍或匯入舊作業 PDF，自動保存 Original 原圖底＋一鍵輸出已清答案空白練習卷 A4 PDF，100% 純前端一對一本地運行。" />
   <meta name="theme-color" content="#0284c7" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,14 +21,14 @@
       <div class="brand-row">
         <img src="./icon.svg" alt="App Icon" class="brand-icon" />
         <div>
-          <h1 class="brand-title">試卷掃描＋自動清答案出卷王</h1>
-          <p class="brand-subtitle">補習社專用｜影相或匯入舊 PDF ➔ 一鍵清手寫答案・去黑影・遮校名學生名 ➔ 即印 A4 練習卷</p>
+          <h1 class="brand-title">試卷掃描＋自動清答案出卷王 <span style="font-size:14px;background:rgba(255,255,255,0.22);padding:2px 8px;border-radius:99px;">極速雙版本 v2.0</span></h1>
+          <p class="brand-subtitle">手機 3 小時狂影實戰版｜自動鎖定「Original 原圖底」＋「已清答案學生版」雙份 PDF 同步輸出</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge-pill">✅ 100% 免費無限頁</span>
-        <span class="badge-pill">🚫 絕無浮水印・無廣告</span>
-        <span class="badge-pill">🔒 純本機處理保障私隱</span>
+        <span class="badge-pill">⚡ 極速積分圖引擎 (&lt;80ms)</span>
+        <span class="badge-pill">💾 自動本機防走失存底</span>
+        <span class="badge-pill">🔒 100% 純前端 One-on-One</span>
       </div>
     </div>
   </header>
@@ -36,11 +36,19 @@
   <div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
 
   <main class="app-container">
+    <!-- Pure Frontend & Auto-Backup Reassurance Banner -->
+    <div class="privacy-speed-banner">
+      <span>🛡️ <strong>100% 純前端 App（唔經任何後台 Server）</strong>：喺你部手機入面一對一獨立運行，人哋完全睇唔到亦唔會互相影響！每影一張相自動存入手機防走失，隨時可一鍵輸出 <strong>「Original 原圖留底」＋「已清答案版」兩份 PDF</strong>。</span>
+      <span id="perfBadge" style="background:#059669;color:#fff;padding:3px 10px;border-radius:99px;font-size:13px;">⚡ 準備就緒（目前 0 頁）</span>
+    </div>
+
     <!-- Step 1: Big Upload & Import Hero Card -->
     <section class="hero-card" aria-label="匯入試卷或影相">
       <div class="hero-top">
-        <h2 class="hero-title">① 第一步：影試卷 ／ 匯入之前有答案嘅作業 PDF（支援一次過揀多頁）</h2>
-        <span style="font-size:14px;font-weight:700;color:#0369a1;">💡 提示：Safari 撳「分享 ➔ 加至主畫面」可當真 App 用</span>
+        <h2 class="hero-title">① 第一步：手機極速連拍試卷 ／ 匯入舊作業 PDF（自動留存 Original 原圖底）</h2>
+        <button type="button" id="btnLoadDemo" class="mini-btn" style="flex:none;padding:6px 12px;background:#fffbeb;color:#b45309;border-color:#fcd34d;">
+          ✨ 載入 1 頁測試範例（可隨時刪除）
+        </button>
       </div>
 
       <!-- Hidden File Inputs -->
@@ -51,8 +59,8 @@
       <div class="hero-grid">
         <label for="cameraInput" class="big-upload-btn btn-camera">
           <span class="btn-emoji">📷</span>
-          <span class="btn-main">即時影相掃描</span>
-          <span class="btn-sub">直接開手機 / iPad 鏡頭連續影試卷</span>
+          <span class="btn-main">手機即時連拍掃描</span>
+          <span class="btn-sub">直接開手機鏡頭狂影（自動存好 Original 原圖底）</span>
         </label>
 
         <label for="pdfInput" class="big-upload-btn btn-pdf" id="lblPdfImport">
@@ -63,38 +71,40 @@
 
         <label for="albumInput" class="big-upload-btn btn-album">
           <span class="btn-emoji">🖼️</span>
-          <span class="btn-main">相簿多選相片</span>
-          <span class="btn-sub">一次過揀幾十張拍好嘅功課小測圖</span>
+          <span class="btn-main">相簿極速多選相片</span>
+          <span class="btn-sub">一次過揀幾十張拍好嘅試卷（秒速入袋唔卡機）</span>
         </label>
-
-        <button type="button" id="btnLoadDemo" class="big-upload-btn btn-demo">
-          <span class="btn-emoji">✨</span>
-          <span class="btn-main">載入「試用示範卷」</span>
-          <span class="btn-sub">即刻試玩一鍵清藍筆答案＋紅筆88分</span>
-        </button>
       </div>
     </section>
 
-    <!-- Step 2: Multi-Page Thumbnail Strip -->
+    <!-- Step 2: Multi-Page Thumbnail Strip & 100% Clean Reset -->
     <section class="panel-card" aria-label="多頁排序與管理">
       <div class="panel-title">
-        <span>📑 已載入頁數管理（可調換頁次、複製或刪除）</span>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span id="pageIndicator" style="font-size:14.5px;color:#0369a1;font-weight:800;">當前：第 1 / 1 頁</span>
-          <button type="button" id="btnClearAllPages" class="mini-btn" style="flex:none;padding:6px 12px;">🔄 重設</button>
+        <span>📑 已載入試卷頁數（每一頁都永久鎖定保存 Original 原圖底，隨時可重做或刪除）</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span id="pageIndicator" style="font-size:15px;color:#0369a1;font-weight:800;">目前：0 頁（空白乾淨狀態）</span>
+          <button type="button" id="btnClearAllPages" class="btn-danger-outline">🗑️ 清空全部重設 (歸零)</button>
         </div>
       </div>
-      <div id="pagesStrip" class="pages-strip"></div>
+
+      <!-- Shown when 0 pages -->
+      <div id="emptyStateBox" class="empty-state-box">
+        <div style="font-size:42px;">📸 📄</div>
+        <h3>目前係 0 頁空白乾淨狀態（冇任何範例阻住你出卷！）</h3>
+        <p>請撳上面 <strong>「📷 手機即時連拍掃描」</strong>、<strong>「🖼️ 相簿極速多選相片」</strong> 或 <strong>「📄 匯入舊作業 PDF」</strong> 開始。<br/>趕時間狂影都唔怕：每一頁都會自動鎖定保存 <strong>Original 原圖底</strong>，你可以一鍵同時下載「Original 原圖留底 PDF」同「已清答案學生版 PDF」！</p>
+      </div>
+
+      <div id="pagesStrip" class="pages-strip" style="display:none;"></div>
     </section>
 
     <!-- Step 3: Main Workspace (Left Controls + Right Live Before/After Canvas) -->
-    <div class="workspace-grid">
+    <div id="workspaceSection" class="workspace-grid">
       <!-- Left Column: Smart Answer Eraser & Manual Tools -->
       <aside class="panel-card">
         <h2 class="panel-title">② 智能清答案 ＆ 遮私隱工具</h2>
 
         <button type="button" id="btnMagicAll" class="magic-preset-btn">
-          <span>⚡ 超級一鍵全清（去紅藍筆＋去黑影＋遮名）</span>
+          <span>⚡ 全卷一鍵清答案（去紅藍筆＋去黑影＋遮名）</span>
         </button>
 
         <!-- Filter 1: Color Ink Eraser -->
@@ -122,7 +132,7 @@
             </label>
             <span id="valWhiten" style="font-weight:800;color:#0284c7;">68%</span>
           </div>
-          <p class="control-desc">將手機影相嘅灰暗紙底同枱面陰影變純白（超慳打印機墨水！）</p>
+          <p class="control-desc">積分圖極速演算法：將灰暗紙底同枱面陰影變純白（超慳打印機墨水！）</p>
           <div class="slider-row">
             <span>漂白力度</span>
             <input type="range" id="rngWhiten" min="15" max="90" value="68" />
@@ -166,7 +176,7 @@
           <div class="control-header">
             <span style="font-size:17px;font-weight:800;color:#92400e;">🖐️ 手動塗改筆 ／ 拉白框 ／ 補橫線</span>
           </div>
-          <p class="control-desc" style="color:#78350f;">直接喺右邊試卷畫面上用手指或 Apple Pencil 拉框／塗抹，遮走深黑答案或補返填充橫線：</p>
+          <p class="control-desc" style="color:#78350f;">直接喺試卷畫面上用手指拉框／塗抹（只改「清理後版本」，絕對唔會破壞 Original 原圖底！）：</p>
 
           <div class="tool-btn-grid">
             <button type="button" id="toolRect" class="tool-btn active">⬜ 拉白框遮答案</button>
@@ -196,7 +206,7 @@
           <div class="mini-btn-row" style="margin-bottom:8px;">
             <button type="button" id="btnRotateLeft" class="mini-btn">↺ 左轉 90°</button>
             <button type="button" id="btnRotateRight" class="mini-btn">↻ 右轉 90°</button>
-            <button type="button" id="btnResetPage" class="mini-btn">還原原圖</button>
+            <button type="button" id="btnResetPage" class="mini-btn" style="color:#0369a1;border-color:#7dd3fc;">🔄 還原此頁原圖重做</button>
           </div>
           <button type="button" id="btnApplyAllPages" class="mini-btn primary" style="width:100%;padding:11px;">
             ⚡ 將呢頁嘅清答案設定「套用到全部頁」
@@ -204,24 +214,24 @@
         </div>
       </aside>
 
-      <!-- Right Column: Live Canvas Stage -->
+      <!-- Right Column: Live Canvas Stage (Dual Version View) -->
       <section class="panel-card">
         <div class="canvas-toolbar">
           <div class="view-mode-btns">
-            <button type="button" id="modeSplit" class="mode-pill active">🌗 並排對比（清理前 vs 清理後）</button>
-            <button type="button" id="modeAfter" class="mode-pill">✨ 只睇清理後（放大手塗修改）</button>
-            <button type="button" id="modeBefore" class="mode-pill">📷 只睇原圖</button>
+            <button type="button" id="modeSplit" class="mode-pill active">🌗 雙版本並排（Original 原圖底 ⇄ 清理後版）</button>
+            <button type="button" id="modeAfter" class="mode-pill">✨ 只睇「清理後版本」（放大手塗）</button>
+            <button type="button" id="modeBefore" class="mode-pill">📷 只睇「Original 原圖留底」</button>
           </div>
-          <span style="font-size:14px;font-weight:700;color:#059669;">👉 喺「清理後」畫面上直接拉框即可遮蓋任何位置</span>
+          <button type="button" id="btnDeleteCurrentPage" class="btn-danger-outline" style="padding:6px 12px;">🗑️ 刪除此頁</button>
         </div>
 
         <div class="canvas-stage-wrap">
           <div id="beforeBox" class="canvas-box">
-            <span class="canvas-tag">📷 清理前（原圖：有手寫答案、紅筆批改、黑影、姓名）</span>
+            <span class="canvas-tag">📷 版本 A：Original 原圖留底（永久保護・隨時可重做）</span>
             <canvas id="beforeCanvas"></canvas>
           </div>
           <div id="afterBox" class="canvas-box">
-            <span class="canvas-tag cleaned">✨ 清理後（空白練習卷：可直接喺度拉白框／塗改／補橫線）</span>
+            <span class="canvas-tag cleaned">✨ 版本 B：已清答案學生版（可直接喺度拉白框／塗改／補橫線）</span>
             <canvas id="editorCanvas"></canvas>
           </div>
         </div>
@@ -229,11 +239,11 @@
     </div>
   </main>
 
-  <!-- Sticky Bottom Bar: Grade/Subject Auto Naming + One-Click A4 PDF Download + AirPrint -->
+  <!-- Sticky Bottom Bar: Dual Version PDF Export (Both / Original Only / Cleaned Only / AirPrint) -->
   <footer class="export-bar">
     <div class="export-inner">
       <div class="naming-row">
-        <span style="font-weight:800;font-size:16px;color:#0f172a;">③ 出卷命名：</span>
+        <span style="font-weight:800;font-size:15.5px;color:#0f172a;">③ 檔案命名：</span>
         <select id="selGrade" class="select-pill" aria-label="選擇年級">
           <option value="P1">小一 (P1)</option>
           <option value="P2">小二 (P2)</option>
@@ -250,15 +260,21 @@
           <option value="常識人文">常識/人文科</option>
           <option value="評估溫習">評估溫習</option>
         </select>
-        <input type="text" id="inpFilename" class="filename-input" style="min-width:250px;" aria-label="PDF 檔案名稱" />
+        <input type="text" id="inpFilename" class="filename-input" style="min-width:210px;" aria-label="PDF 檔案名稱前綴" />
       </div>
 
       <div class="export-btns">
+        <button type="button" id="btnDownloadBothPdf" class="action-export-btn btn-download-both">
+          <span>⚡ 同時下載「兩個版本 PDF」（Original原圖 + 清答案版，共 <span id="pdfPageCount">0</span> 頁）</span>
+        </button>
+        <button type="button" id="btnDownloadOrigPdf" class="action-export-btn btn-download-orig">
+          <span>📷 只下載 Original 原圖留底 PDF</span>
+        </button>
         <button type="button" id="btnDownloadPdf" class="action-export-btn btn-download-pdf">
-          <span>⬇️ 即時下載乾淨 A4 PDF（共 <span id="pdfPageCount">1</span> 頁）</span>
+          <span>✨ 只下載已清答案學生版 PDF</span>
         </button>
         <button type="button" id="btnPrint" class="action-export-btn btn-print">
-          <span>🖨️ 直接列印 (AirPrint)</span>
+          <span>🖨️ AirPrint 列印</span>
         </button>
       </div>
     </div>

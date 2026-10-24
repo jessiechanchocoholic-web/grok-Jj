@@ -629,3 +629,89 @@ body {
     object-fit: contain;
   }
 }
+
+/* v2.0 Additions: Empty Zero-Page State, Speed & Privacy Banner, Dual PDF Export Buttons */
+.privacy-speed-banner {
+  background: #ecfdf5;
+  border: 1.5px solid #6ee7b7;
+  color: #065f46;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.empty-state-box {
+  background: #ffffff;
+  border: 2.5px dashed #93c5fd;
+  border-radius: 16px;
+  padding: 36px 20px;
+  text-align: center;
+  color: #1e3a8a;
+  margin: 4px 0;
+}
+
+.empty-state-box h3 {
+  margin: 8px 0 6px;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.empty-state-box p {
+  margin: 0 auto 14px;
+  max-width: 560px;
+  font-size: 15.5px;
+  color: #475569;
+}
+
+.btn-danger-outline {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1.5px solid #fda4af;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-danger-outline:active {
+  transform: scale(0.97);
+}
+
+.btn-download-both {
+  background: linear-gradient(135deg, #e11d48 0%, #ea580c 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.35);
+}
+
+.btn-download-orig {
+  background: #0f172a;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 185px;
+  }
+  .export-btns {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn-download-both {
+    grid-column: span 2;
+    justify-content: center;
+  }
+  .action-export-btn {
+    font-size: 15.5px;
+    padding: 11px 12px;
+    justify-content: center;
+  }
+}
