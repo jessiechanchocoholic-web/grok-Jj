@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>本日克羅地亞 — 克羅地亞・亞得里亞海每日最新活動情報｜克羅地亞發展有限公司</title>
+  <meta name="description" content="克羅地亞發展有限公司 (croatia.com.hk) 出品。按日子與地圖尋找克羅地亞今日、本週末的松露美食節、十六湖紅葉、市集、展覽與音樂會，與同行朋友一起投票排行程。">
+  <meta name="theme-color" content="#1F3049">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="本日克羅地亞">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <!-- Top Official Brand Strip -->
+  <div class="top-brand-strip">
+    <span>🇭🇷 <b>克羅地亞發展有限公司</b>（香港持牌旅行社 354071）出品</span>
+    <a href="https://croatia.com.hk/" target="_blank" rel="noopener">官網 croatia.com.hk ↗</a>
+  </div>
+
+  <!-- Sticky iOS App Header (1:1 本日東京) -->
+  <header class="app-header">
+    <div class="header-row">
+      <div class="brand-title-wrap">
+        <img class="brand-mascot" src="assets/icon-192.png" alt="本日克羅地亞吉祥物">
+        <div>
+          <div class="brand-title">本日克羅地亞</div>
+          <div class="brand-sub">克羅地亞・亞得里亞海每日最新活動情報</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btnSearchToggle" title="搜尋">🔍</button>
+        <button class="icon-btn" id="btnLang" title="切換語言">繁/HR/EN</button>
+        <button class="icon-btn" id="btnTheme" title="深淺色模式">🌓</button>
+        <button class="pill-btn primary" id="btnToday">今天</button>
+      </div>
+    </div>
+    <div class="search-bar-wrap" id="searchWrap">
+      <input type="search" id="searchInput" class="search-input" placeholder="搜尋克羅地亞活動（支援中文、英文、克羅地亞文，例如 Truffle / Plitvice / 松露）...">
+    </div>
+    <!-- Horizontal Date Strip -->
+    <div class="date-strip-bar" id="dateStrip"></div>
+  </header>
+
+  <!-- TAB 1: 活動 (Events Discovery) -->
+  <main id="tab-events">
+    <div class="filter-scroll" id="regionFilters"></div>
+    <div class="filter-scroll" id="catFilters"></div>
+
+    <!-- Interactive Map with Numbered Clusters & Live Weather -->
+    <section class="map-section">
+      <div class="map-card">
+        <svg class="map-svg-bg" viewBox="0 0 600 240" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#A6D1EE"/>
+              <stop offset="100%" stop-color="#6FAED9"/>
+            </linearGradient>
+          </defs>
+          <rect width="600" height="240" fill="url(#sea)"/>
+          <!-- Stylized Croatia Landmass & Adriatic Coastline -->
+          <path d="M80,55 Q130,35 220,38 L390,22 Q440,30 455,65 L350,82 Q290,95 310,140 L430,195 L540,225 L490,236 L345,185 Q245,140 205,112 L115,98 Q85,82 80,55 Z" fill="#EFECE4" stroke="#C5BFB0" stroke-width="2.5"/>
+          <!-- Islands -->
+          <ellipse cx="195" cy="128" rx="22" ry="6" transform="rotate(25 195 128)" fill="#EFECE4"/>
+          <ellipse cx="315" cy="196" rx="28" ry="6" transform="rotate(12 315 196)" fill="#EFECE4"/>
+          <ellipse cx="385" cy="212" rx="24" ry="5" transform="rotate(15 385 212)" fill="#EFECE4"/>
+          <text x="155" y="185" fill="#1F3049" opacity="0.45" font-size="14" font-weight="800" letter-spacing="3">ADRIATIC SEA 亞得里亞海</text>
+        </svg>
+        <div class="map-weather-pill" id="mapWeatherPill">☀️ 克羅地亞 · 19°C</div>
+        <div id="mapClusters"></div>
+        <div class="map-Status-pill" id="mapStatusPill">點擊圈內數字篩選該區活動</div>
+      </div>
+    </section>
+
+    <!-- Featured Carousel (近期熱門・季節特輯) -->
+    <div class="section-head">
+      <h2>🔥 近期熱門・季節特輯</h2>
+      <span>白松露節・十六湖紅葉・聖誕市集</span>
+    </div>
+    <div class="featured-scroll" id="featuredScroll"></div>
+
+    <!-- All Events List -->
+    <div class="section-head">
+      <h2>📅 全部克羅地亞活動</h2>
+      <span id="eventsCountLabel">載入中...</span>
+    </div>
+    <div class="events-grid" id="eventsGrid"></div>
+
+    <button class="floating-saved-btn" id="floatingSavedBtn">♥ 已收藏 4</button>
+  </main>
+
+  <!-- TAB 2: 行程 (Collaborative Itinerary & Voting) -->
+  <main id="tab-trip" style="display:none">
+    <div id="tripContainer"></div>
+  </main>
+
+  <!-- TAB 3: 活動卡 (Visited Souvenir Cards & Stamp Book) -->
+  <main id="tab-cards" style="display:none">
+    <div id="cardsContainer"></div>
+  </main>
+
+  <!-- TAB 4: 更多 (About Croatia Development Ltd, EUR/HKD, Visa/Tax/Emergency Info) -->
+  <main id="tab-more" style="display:none">
+    <div id="moreContainer"></div>
+  </main>
+
+  <!-- Detail Modal Sheet (1:1 本日東京活動詳情 + 固定底部加入行程/收藏/分享圖) -->
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal-sheet">
+      <div class="modal-scroll" id="detailContent"></div>
+      <div class="detail-bottom-bar" id="detailBottomBar"></div>
+    </div>
+  </div>
+
+  <!-- Bottom iOS Tab Bar -->
+  <nav class="bottom-tabbar">
+    <button class="tab-item active" data-tab="events">
+      <span class="t-ico">🧭</span>
+      <span>活動</span>
+      <span class="tab-badge" id="badgeEvents">24</span>
+    </button>
+    <button class="tab-item" data-tab="trip">
+      <span class="t-ico">🗓</span>
+      <span>行程・投票</span>
+      <span class="tab-badge" id="badgeTrip">7</span>
+    </button>
+    <button class="tab-item" data-tab="cards">
+      <span class="t-ico">🏅</span>
+      <span>活動卡</span>
+      <span class="tab-badge" id="badgeCards">5</span>
+    </button>
+    <button class="tab-item" data-tab="more">
+      <span class="t-ico">🇭🇷</span>
+      <span>克羅地亞遊</span>
+    </button>
+  </nav>
+</div>
+
+<script src="events-data.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "本日克羅地亞 — 克羅地亞・亞得里亞海每日最新活動情報",
+  "short_name": "本日克羅地亞",
+  "description": "克羅地亞發展有限公司 (croatia.com.hk) 出品。按日子找克羅地亞今日、本週末的節慶、松露美食節、市集、展覽、音樂會與國家公園情報，一起排行程、投票及收集活動卡。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7F5F0",
+  "theme_color": "#1F3049",
+  "orientation": "portrait-primary",
+  "lang": "zh-Hant-HK",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
