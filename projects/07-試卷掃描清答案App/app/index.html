@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>試卷掃描＋自動清答案出卷王｜補習中心專用（免費無限・無浮水印）</title>
+  <meta name="description" content="香港補習社專用：手機/iPad 即時影相或匯入舊作業 PDF，一鍵清走藍筆手寫答案、紅筆批改、鉛筆草稿、去黑影漂白、遮蓋學生姓名與學校名，即出高清空白 A4 PDF 列印。" />
+  <meta name="theme-color" content="#0284c7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="清答案出卷王" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- Top Sticky Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-row">
+        <img src="./icon.svg" alt="App Icon" class="brand-icon" />
+        <div>
+          <h1 class="brand-title">試卷掃描＋自動清答案出卷王</h1>
+          <p class="brand-subtitle">補習社專用｜影相或匯入舊 PDF ➔ 一鍵清手寫答案・去黑影・遮校名學生名 ➔ 即印 A4 練習卷</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge-pill">✅ 100% 免費無限頁</span>
+        <span class="badge-pill">🚫 絕無浮水印・無廣告</span>
+        <span class="badge-pill">🔒 純本機處理保障私隱</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
+
+  <main class="app-container">
+    <!-- Step 1: Big Upload & Import Hero Card -->
+    <section class="hero-card" aria-label="匯入試卷或影相">
+      <div class="hero-top">
+        <h2 class="hero-title">① 第一步：影試卷 ／ 匯入之前有答案嘅作業 PDF（支援一次過揀多頁）</h2>
+        <span style="font-size:14px;font-weight:700;color:#0369a1;">💡 提示：Safari 撳「分享 ➔ 加至主畫面」可當真 App 用</span>
+      </div>
+
+      <!-- Hidden File Inputs -->
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple style="display:none;" />
+      <input type="file" id="pdfInput" accept=".pdf,application/pdf" multiple style="display:none;" />
+      <input type="file" id="albumInput" accept="image/*" multiple style="display:none;" />
+
+      <div class="hero-grid">
+        <label for="cameraInput" class="big-upload-btn btn-camera">
+          <span class="btn-emoji">📷</span>
+          <span class="btn-main">即時影相掃描</span>
+          <span class="btn-sub">直接開手機 / iPad 鏡頭連續影試卷</span>
+        </label>
+
+        <label for="pdfInput" class="big-upload-btn btn-pdf" id="lblPdfImport">
+          <span class="btn-emoji">📄</span>
+          <span class="btn-main">匯入舊作業 PDF（清答案）</span>
+          <span class="btn-sub">自動拆開每一頁＋清走手寫/彩色答案</span>
+        </label>
+
+        <label for="albumInput" class="big-upload-btn btn-album">
+          <span class="btn-emoji">🖼️</span>
+          <span class="btn-main">相簿多選相片</span>
+          <span class="btn-sub">一次過揀幾十張拍好嘅功課小測圖</span>
+        </label>
+
+        <button type="button" id="btnLoadDemo" class="big-upload-btn btn-demo">
+          <span class="btn-emoji">✨</span>
+          <span class="btn-main">載入「試用示範卷」</span>
+          <span class="btn-sub">即刻試玩一鍵清藍筆答案＋紅筆88分</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Step 2: Multi-Page Thumbnail Strip -->
+    <section class="panel-card" aria-label="多頁排序與管理">
+      <div class="panel-title">
+        <span>📑 已載入頁數管理（可調換頁次、複製或刪除）</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="pageIndicator" style="font-size:14.5px;color:#0369a1;font-weight:800;">當前：第 1 / 1 頁</span>
+          <button type="button" id="btnClearAllPages" class="mini-btn" style="flex:none;padding:6px 12px;">🔄 重設</button>
+        </div>
+      </div>
+      <div id="pagesStrip" class="pages-strip"></div>
+    </section>
+
+    <!-- Step 3: Main Workspace (Left Controls + Right Live Before/After Canvas) -->
+    <div class="workspace-grid">
+      <!-- Left Column: Smart Answer Eraser & Manual Tools -->
+      <aside class="panel-card">
+        <h2 class="panel-title">② 智能清答案 ＆ 遮私隱工具</h2>
+
+        <button type="button" id="btnMagicAll" class="magic-preset-btn">
+          <span>⚡ 超級一鍵全清（去紅藍筆＋去黑影＋遮名）</span>
+        </button>
+
+        <!-- Filter 1: Color Ink Eraser -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label">
+              <input type="checkbox" id="chkColorInk" checked />
+              <span>🔴🔵 自動去紅筆批改／藍筆答案</span>
+            </label>
+            <span id="valColorInk" style="font-weight:800;color:#0284c7;">62%</span>
+          </div>
+          <p class="control-desc">一秒洗白老師紅筆剔號、交叉、分數同學生藍筆手寫字，保留黑色題目同橫線</p>
+          <div class="slider-row">
+            <span>清色力度</span>
+            <input type="range" id="rngColorInk" min="15" max="90" value="62" />
+          </div>
+        </div>
+
+        <!-- Filter 2: Adaptive Shadow & Bleaching -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label">
+              <input type="checkbox" id="chkWhiten" checked />
+              <span>☀️ 自動去黑影＋紙底漂白加深</span>
+            </label>
+            <span id="valWhiten" style="font-weight:800;color:#0284c7;">68%</span>
+          </div>
+          <p class="control-desc">將手機影相嘅灰暗紙底同枱面陰影變純白（超慳打印機墨水！）</p>
+          <div class="slider-row">
+            <span>漂白力度</span>
+            <input type="range" id="rngWhiten" min="15" max="90" value="68" />
+          </div>
+        </div>
+
+        <!-- Filter 3: Light Pencil & Gray Handwriting Eraser -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label">
+              <input type="checkbox" id="chkPencil" checked />
+              <span>✏️ 濾走淺色鉛筆字／草稿筆記</span>
+            </label>
+            <span id="valPencil" style="font-weight:800;color:#0284c7;">145</span>
+          </div>
+          <p class="control-desc">清除較淺灰嘅鉛筆手寫字，保留深黑印刷題目</p>
+          <div class="slider-row">
+            <span>濾鉛筆度</span>
+            <input type="range" id="rngPencil" min="85" max="200" value="145" />
+          </div>
+        </div>
+
+        <!-- Filter 4: Auto Header Privacy Mask -->
+        <div class="control-group">
+          <div class="control-header">
+            <label class="control-label">
+              <input type="checkbox" id="chkHeaderMask" checked />
+              <span>🛡️ 一鍵遮頂部學校名＋學生姓名</span>
+            </label>
+            <span id="valHeaderMask" style="font-weight:800;color:#0284c7;">9%</span>
+          </div>
+          <p class="control-desc">自動用白框遮走試卷最頂端嘅學校名、學生名同班別（保障私隱）</p>
+          <div class="slider-row">
+            <span>遮蓋高度</span>
+            <input type="range" id="rngHeaderMask" min="4" max="22" step="0.5" value="9.0" />
+          </div>
+        </div>
+
+        <!-- Manual Touch Tools -->
+        <div class="control-group" style="background:#fffbeb;border-color:#fde68a;">
+          <div class="control-header">
+            <span style="font-size:17px;font-weight:800;color:#92400e;">🖐️ 手動塗改筆 ／ 拉白框 ／ 補橫線</span>
+          </div>
+          <p class="control-desc" style="color:#78350f;">直接喺右邊試卷畫面上用手指或 Apple Pencil 拉框／塗抹，遮走深黑答案或補返填充橫線：</p>
+
+          <div class="tool-btn-grid">
+            <button type="button" id="toolRect" class="tool-btn active">⬜ 拉白框遮答案</button>
+            <button type="button" id="toolBrush" class="tool-btn">🖌️ 塗改液筆</button>
+            <button type="button" id="toolLine" class="tool-btn" style="grid-column: span 2;">📏 補劃填充橫線 (________)</button>
+          </div>
+
+          <div class="slider-row" style="margin-bottom:10px;">
+            <span>筆刷粗幼</span>
+            <input type="range" id="rngBrushSize" min="8" max="70" value="28" />
+            <span id="valBrushSize">28px</span>
+          </div>
+
+          <div class="mini-btn-row">
+            <button type="button" id="btnUndo" class="mini-btn">↩️ 復原上一步</button>
+            <button type="button" id="btnClearStrokes" class="mini-btn">🗑️ 清除手塗</button>
+          </div>
+        </div>
+
+        <!-- Geometry & Batch Apply -->
+        <div class="control-group">
+          <div class="slider-row" style="margin-bottom:10px;">
+            <span>✂️ 四邊切黑邊</span>
+            <input type="range" id="rngCrop" min="0" max="12" step="0.5" value="0" />
+            <span id="valCrop">0%</span>
+          </div>
+          <div class="mini-btn-row" style="margin-bottom:8px;">
+            <button type="button" id="btnRotateLeft" class="mini-btn">↺ 左轉 90°</button>
+            <button type="button" id="btnRotateRight" class="mini-btn">↻ 右轉 90°</button>
+            <button type="button" id="btnResetPage" class="mini-btn">還原原圖</button>
+          </div>
+          <button type="button" id="btnApplyAllPages" class="mini-btn primary" style="width:100%;padding:11px;">
+            ⚡ 將呢頁嘅清答案設定「套用到全部頁」
+          </button>
+        </div>
+      </aside>
+
+      <!-- Right Column: Live Canvas Stage -->
+      <section class="panel-card">
+        <div class="canvas-toolbar">
+          <div class="view-mode-btns">
+            <button type="button" id="modeSplit" class="mode-pill active">🌗 並排對比（清理前 vs 清理後）</button>
+            <button type="button" id="modeAfter" class="mode-pill">✨ 只睇清理後（放大手塗修改）</button>
+            <button type="button" id="modeBefore" class="mode-pill">📷 只睇原圖</button>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:#059669;">👉 喺「清理後」畫面上直接拉框即可遮蓋任何位置</span>
+        </div>
+
+        <div class="canvas-stage-wrap">
+          <div id="beforeBox" class="canvas-box">
+            <span class="canvas-tag">📷 清理前（原圖：有手寫答案、紅筆批改、黑影、姓名）</span>
+            <canvas id="beforeCanvas"></canvas>
+          </div>
+          <div id="afterBox" class="canvas-box">
+            <span class="canvas-tag cleaned">✨ 清理後（空白練習卷：可直接喺度拉白框／塗改／補橫線）</span>
+            <canvas id="editorCanvas"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Sticky Bottom Bar: Grade/Subject Auto Naming + One-Click A4 PDF Download + AirPrint -->
+  <footer class="export-bar">
+    <div class="export-inner">
+      <div class="naming-row">
+        <span style="font-weight:800;font-size:16px;color:#0f172a;">③ 出卷命名：</span>
+        <select id="selGrade" class="select-pill" aria-label="選擇年級">
+          <option value="P1">小一 (P1)</option>
+          <option value="P2">小二 (P2)</option>
+          <option value="P3" selected>小三 (P3)</option>
+          <option value="P4">小四 (P4)</option>
+          <option value="P5">小五 (P5)</option>
+          <option value="P6">小六 (P6)</option>
+          <option value="全級">綜合年級</option>
+        </select>
+        <select id="selSubject" class="select-pill" aria-label="選擇科目">
+          <option value="英文" selected>英文科</option>
+          <option value="中文">中文科</option>
+          <option value="數學">數學科</option>
+          <option value="常識人文">常識/人文科</option>
+          <option value="評估溫習">評估溫習</option>
+        </select>
+        <input type="text" id="inpFilename" class="filename-input" style="min-width:250px;" aria-label="PDF 檔案名稱" />
+      </div>
+
+      <div class="export-btns">
+        <button type="button" id="btnDownloadPdf" class="action-export-btn btn-download-pdf">
+          <span>⬇️ 即時下載乾淨 A4 PDF（共 <span id="pdfPageCount">1</span> 頁）</span>
+        </button>
+        <button type="button" id="btnPrint" class="action-export-btn btn-print">
+          <span>🖨️ 直接列印 (AirPrint)</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Print-only full-bleed A4 pages -->
+  <div id="printContainer"></div>
+
+  <!-- Scripts (100% Local Bundle, No External Server Required) -->
+  <script src="./vendor/pdf.min.js"></script>
+  <script src="./pdf-lib.js"></script>
+  <script src="./demo-sheet.js"></script>
+  <script src="./processor.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

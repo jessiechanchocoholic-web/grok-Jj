@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="55%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Corner scan brackets -->
+  <path d="M72 132 V88 Q72 72 88 72 H132" fill="none" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/>
+  <path d="M380 72 H424 Q440 72 440 88 V132" fill="none" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/>
+  <path d="M72 380 V424 Q72 440 88 440 H132" fill="none" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/>
+  <path d="M380 440 H424 Q440 440 440 424 V380" fill="none" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Paper top half (shadowy with red/blue marks) -->
+  <path d="M124 96 H388 Q404 96 404 112 V256 H108 V112 Q108 96 124 96 Z" fill="#e2e8f0"/>
+  <!-- Top half printed lines + handwritten blue/red marks -->
+  <rect x="138" y="130" width="160" height="14" rx="7" fill="#334155"/>
+  <!-- Red 88 score -->
+  <text x="325" y="152" font-family="Arial, sans-serif" font-weight="bold" font-size="38" fill="#ef4444">88</text>
+  <line x1="322" y1="160" x2="376" y2="154" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+  <!-- Question 1 with blue answer & red tick -->
+  <rect x="138" y="176" width="90" height="12" rx="6" fill="#475569"/>
+  <rect x="240" y="184" width="95" height="5" fill="#475569"/>
+  <path d="M248 180 Q268 158 286 178 T324 172" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+  <path d="M346 174 L358 186 L382 156" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Question 2 with blue answer -->
+  <rect x="138" y="216" width="110" height="12" rx="6" fill="#475569"/>
+  <rect x="260" y="224" width="85" height="5" fill="#475569"/>
+  <path d="M266 220 Q288 202 310 218 T338 214" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Paper bottom half (pure white, answers cleanly erased!) -->
+  <path d="M108 256 H404 V400 Q404 416 388 416 H124 Q108 416 108 400 Z" fill="#ffffff"/>
+  <!-- Clean printed questions with empty underlines -->
+  <rect x="138" y="292" width="100" height="13" rx="6" fill="#0f172a"/>
+  <rect x="250" y="301" width="115" height="5" rx="2" fill="#0f172a"/>
+  <rect x="138" y="336" width="120" height="13" rx="6" fill="#0f172a"/>
+  <rect x="270" y="345" width="95" height="5" rx="2" fill="#0f172a"/>
+  <!-- Green Sparkle Badge -->
+  <circle cx="372" cy="382" r="44" fill="#10b981" stroke="#ffffff" stroke-width="8"/>
+  <path d="M352 382 L366 396 L394 366" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Glowing Scanner Laser Line -->
+  <rect x="76" y="246" width="360" height="20" rx="10" fill="#38bdf8" opacity="0.35"/>
+  <rect x="84" y="251" width="344" height="10" rx="5" fill="#ffffff"/>
+  <rect x="84" y="253" width="344" height="6" rx="3" fill="#06b6d4"/>
+</svg>

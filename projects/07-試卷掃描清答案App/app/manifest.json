@@ -1,0 +1,29 @@
+{
+  "name": "試卷掃描＋自動清答案出卷王",
+  "short_name": "清答案出卷王",
+  "description": "香港補習社專用：免費無限影卷、匯入舊作業PDF、自動去黑影漂白、一鍵清除紅藍筆批改與手寫答案、遮學生名校名、即出A4空白練習卷PDF",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0284c7",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
