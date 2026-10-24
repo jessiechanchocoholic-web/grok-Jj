@@ -11,15 +11,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="掃描清答案" />
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="./manifest.json?v=3.1" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg?v=3.1" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.1" />
+  <link rel="stylesheet" href="./style.css?v=3.1" />
 </head>
 <body>
-  <!-- Hidden Native Inputs -->
-  <input type="file" id="cameraFallbackInput" accept="image/*" capture="environment" multiple hidden />
-  <input type="file" id="importFilesInput" accept="image/*,.pdf,application/pdf" multiple hidden />
+  <!-- Off-screen Native File Inputs (NO hidden attribute so iOS Safari <label for="..."> always works) -->
+  <input type="file" id="cameraFallbackInput" class="sr-file-input" accept="image/*" capture="environment" multiple />
+  <input type="file" id="importFilesInput" class="sr-file-input" accept="image/*,.pdf,application/pdf" multiple />
 
   <!-- Toast Notification -->
   <div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
@@ -30,7 +30,7 @@
   <section id="screenHome" class="app-screen active">
     <header class="top-bar">
       <div class="top-brand">
-        <img src="./icon.svg" alt="" class="top-logo" />
+        <img src="./icon.svg?v=3.1" alt="" class="top-logo" />
         <span class="top-title">📁 我的試卷庫</span>
         <span id="docCountBadge" class="top-badge">0 份</span>
       </div>
@@ -52,10 +52,10 @@
         <span class="cta-ico">📷</span>
         <span>連續快拍</span>
       </button>
-      <button type="button" id="btnImportFiles" class="cta-giant cta-import">
+      <label for="importFilesInput" id="btnImportFiles" class="cta-giant cta-import" role="button" tabindex="0">
         <span class="cta-ico">📄</span>
         <span>匯入相簿 / 舊 PDF</span>
-      </button>
+      </label>
     </footer>
   </section>
 
@@ -66,21 +66,24 @@
     <header class="cam-top-bar">
       <button type="button" id="btnCloseCamera" class="cam-nav-btn">✕ 返回</button>
       <span class="cam-title">📷 連續快拍</span>
-      <button type="button" id="btnNativeCamFallback" class="cam-nav-btn">系統相機</button>
+      <label for="cameraFallbackInput" id="btnNativeCamFallback" class="cam-nav-btn" role="button" tabindex="0">系統相機</label>
     </header>
 
     <div id="camViewfinder" class="cam-viewfinder">
       <video id="camVideo" autoplay playsinline muted></video>
       <canvas id="camSimCanvas" class="cam-sim-canvas"></canvas>
       <div class="cam-a4-guide"></div>
+      <label for="cameraFallbackInput" id="btnCamFallbackBig" class="cam-fallback-cta" role="button" tabindex="0">
+        📷 直接開啟手機相機拍照
+      </label>
       <div id="camFlash" class="cam-flash"></div>
     </div>
 
     <footer class="cam-bottom-bar">
-      <button type="button" id="btnCamImport" class="cam-side-btn">
+      <label for="importFilesInput" id="btnCamImport" class="cam-side-btn" role="button" tabindex="0">
         <span class="cam-side-ico">🖼️</span>
         <span>相簿/PDF</span>
-      </button>
+      </label>
 
       <button type="button" id="btnShutter" class="shutter-btn" aria-label="快門拍照">
         <span class="shutter-inner"></span>
@@ -125,7 +128,7 @@
         🛡️ 遮頂部名: 開
       </button>
 
-      <!-- Top-right floating mini pill: Hold or Click to view Original -->
+      <!-- Top-right floating mini pill: Hold to view Original -->
       <button type="button" id="btnCompareOrig" class="floating-pill right-pill">
         👁️ 按住睇原圖
       </button>
@@ -265,11 +268,11 @@
   <!-- Print Container -->
   <div id="printContainer"></div>
 
-  <!-- Local Scripts -->
-  <script src="./vendor/pdf.min.js"></script>
-  <script src="./pdf-lib.js"></script>
-  <script src="./demo-sheet.js"></script>
-  <script src="./processor.js"></script>
-  <script src="./app.js"></script>
+  <!-- Local Scripts (with ?v=3.1 cache-busting) -->
+  <script src="./vendor/pdf.min.js?v=3.1"></script>
+  <script src="./pdf-lib.js?v=3.1"></script>
+  <script src="./demo-sheet.js?v=3.1"></script>
+  <script src="./processor.js?v=3.1"></script>
+  <script src="./app.js?v=3.1"></script>
 </body>
 </html>

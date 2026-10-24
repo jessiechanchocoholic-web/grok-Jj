@@ -1,5 +1,5 @@
 /**
- * 試卷影像處理與清答案核心引擎 v3.0 (CamScanner Full Engine)
+ * 試卷影像處理與清答案核心引擎 v3.1 (CamScanner Full Engine)
  * 支援：
  * 1. 四點透視拉直裁切 (4-Corner Homography Perspective Warp + 自動紙張邊緣偵測)
  * 2. 四大濾鏡模式：
@@ -8,11 +8,9 @@
  *    - 'bw'          (✨ 高清黑白：去黑影純黑白高對比)
  *    - 'cleanAnswer' (🧹 自動清答案：去紅藍筆批改手寫＋濾鉛筆字＋去黑影＋可選遮頂部校名學生名)
  * 3. 手動塗改工具：⬜ 拉白框 (rect)、🖌️ 塗改筆 (brush)、📏 補橫線 (line)、🏷️ 遮名條 (maskbar)
+ * 4. 旋轉 90° 筆觸座標同步轉換 (rotateStrokes90CW)
  */
 (function (global) {
-  /**
-   * 解 8x8 線性方程組以求透視變換矩陣 (Homography)
-   */
   function solveLinearSystem(A, B) {
     var n = B.length;
     for (var i = 0; i < n; i++) {
@@ -49,10 +47,6 @@
     return B;
   }
 
-  /**
-   * 根據目標矩形 (0,0)-(dstW,dstH) 映射到原圖四個角點 [TL, TR, BR, BL] (normalized 0..1)
-   * 進行雙線性插值透視拉直 (Inverse Homography Mapping)
-   */
   function warpPerspectiveCanvas(srcCanvas, normCorners) {
     if (!normCorners || normCorners.length !== 4) return srcCanvas;
     var sw = srcCanvas.width;
@@ -64,7 +58,6 @@
       };
     });
 
-    // Check if corners are essentially full rectangle (skip warp for speed)
     var isFull =
       Math.abs(normCorners[0].x) < 0.005 &&
       Math.abs(normCorners[0].y) < 0.005 &&
@@ -84,7 +77,6 @@
     var dstW = Math.max(120, Math.round(Math.max(topW, botW)));
     var dstH = Math.max(120, Math.round(Math.max(leftH, rightH)));
 
-    // Map dst (u,v) -> src (x,y)
     var srcCorners = [
       { u: 0, v: 0 },
       { u: dstW - 1, v: 0 },
@@ -153,9 +145,6 @@
     return outCanvas;
   }
 
-  /**
-   * 自動偵測紙張四隻角（若背景有深色檯面則收縮至紙張邊界，否則預設向內縮 4% 切走黑邊）
-   */
   function autoDetectCorners(srcCanvas) {
     var w = srcCanvas.width;
     var h = srcCanvas.height;
@@ -445,7 +434,6 @@
             }
 
             if (mode === 'magicColor') {
-              // Magic Color: bleach background to white, boost saturation & contrast of foreground ink
               if (normLum >= whiteCut) {
                 data[di] = 255;
                 data[di + 1] = 255;
@@ -507,6 +495,7 @@
   }
 
   function renderStroke(ctx, st) {
+    if (!st) return;
     ctx.save();
     if (st.tool === 'brush') {
       ctx.strokeStyle = '#FFFFFF';
@@ -533,7 +522,7 @@
       var ry = Math.min(st.y1, st.y2);
       var rw = Math.abs(st.x2 - st.x1);
       var rh = Math.abs(st.y2 - st.y1);
-      if (st.tool === 'maskbar' && rh < 28) rh = 34;
+      if (st.tool === 'maskbar' && rh < 28 && rw >= rh) rh = 34;
       ctx.fillRect(rx, ry, rw, rh);
     } else if (st.tool === 'line') {
       ctx.strokeStyle = '#111827';
@@ -544,17 +533,76 @@
       var dy = Math.abs(st.y2 - st.y1);
       var dx = Math.abs(st.x2 - st.x1);
       var targetY = (dx > dy * 3) ? st.y1 : st.y2;
-      ctx.lineTo(st.x2, targetY);
+      var targetX = (dy > dx * 3) ? st.x1 : st.x2;
+      ctx.lineTo(targetX, targetY);
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  global.ScannerProcessor = {
+  /**
+   * 當頁面順時針旋轉 90° 時，將該頁已畫嘅筆觸座標 (基於旋轉前 oldW × oldH)
+   * 同步順時針旋轉 90° 到新畫布 (newW = oldH, newH = oldW)：
+   *   (x, y) -> (oldH - y, x)
+   */
+  function rotateStrokes90CW(strokes, oldW, oldH) {
+    if (!strokes || !strokes.length || !oldW || !oldH) return strokes || [];
+    return strokes.map(function (st) {
+      if (!st) return st;
+      if (st.tool === 'brush') {
+        return {
+          tool: 'brush',
+          size: st.size || 28,
+          points: (st.points || []).map(function (pt) {
+            return {
+              x: Math.round(oldH - pt.y),
+              y: Math.round(pt.x)
+            };
+          })
+        };
+      }
+      if (st.tool === 'rect' || st.tool === 'maskbar') {
+        var rx = Math.min(st.x1, st.x2);
+        var ry = Math.min(st.y1, st.y2);
+        var rw = Math.abs(st.x2 - st.x1);
+        var rh = Math.abs(st.y2 - st.y1);
+        if (st.tool === 'maskbar' && rh < 28 && rw >= rh) rh = 34;
+        return {
+          tool: 'rect',
+          size: st.size || 24,
+          x1: Math.round(oldH - (ry + rh)),
+          y1: Math.round(rx),
+          x2: Math.round(oldH - ry),
+          y2: Math.round(rx + rw)
+        };
+      }
+      if (st.tool === 'line') {
+        var dy = Math.abs(st.y2 - st.y1);
+        var dx = Math.abs(st.x2 - st.x1);
+        var x2 = (dy > dx * 3) ? st.x1 : st.x2;
+        var y2 = (dx > dy * 3) ? st.y1 : st.y2;
+        return {
+          tool: 'line',
+          size: st.size || 18,
+          x1: Math.round(oldH - st.y1),
+          y1: Math.round(st.x1),
+          x2: Math.round(oldH - y2),
+          y2: Math.round(x2)
+        };
+      }
+      return st;
+    });
+  }
+
+  var api = {
     prepareGeometryCanvas: prepareGeometryCanvas,
     warpPerspectiveCanvas: warpPerspectiveCanvas,
     autoDetectCorners: autoDetectCorners,
     processPageCanvas: processPageCanvas,
-    renderStroke: renderStroke
+    renderStroke: renderStroke,
+    rotateStrokes90CW: rotateStrokes90CW
   };
+
+  global.ScannerProcessor = api;
+  global.ExamProcessor = api;
 })(window);
