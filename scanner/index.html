@@ -2,288 +2,270 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-  <title>試卷掃描＋自動清答案出卷王 v2.0｜補習中心極速版（免費無限・雙版本留底）</title>
-  <meta name="description" content="香港補習社專用：手機/iPad 極速連拍或匯入舊作業 PDF，自動保存 Original 原圖底＋一鍵輸出已清答案空白練習卷 A4 PDF，100% 純前端一對一本地運行。" />
-  <meta name="theme-color" content="#0284c7" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>掃描清答案王</title>
+  <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="清答案出卷王" />
+  <meta name="apple-mobile-web-app-title" content="掃描清答案" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <!-- Top Sticky Header -->
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="brand-row">
-        <img src="./icon.svg" alt="App Icon" class="brand-icon" />
-        <div>
-          <h1 class="brand-title">試卷掃描＋自動清答案出卷王 <span style="font-size:14px;background:rgba(255,255,255,0.22);padding:2px 8px;border-radius:99px;">極速雙版本 v2.0</span></h1>
-          <p class="brand-subtitle">手機 3 小時狂影實戰版｜自動鎖定「Original 原圖底」＋「已清答案學生版」雙份 PDF 同步輸出</p>
-        </div>
-      </div>
-      <div class="header-badges">
-        <span class="badge-pill">⚡ 極速積分圖引擎 (&lt;80ms)</span>
-        <span class="badge-pill">💾 自動本機防走失存底</span>
-        <span class="badge-pill">🔒 100% 純前端 One-on-One</span>
-      </div>
-    </div>
-  </header>
+  <!-- Hidden Native Inputs -->
+  <input type="file" id="cameraFallbackInput" accept="image/*" capture="environment" multiple hidden />
+  <input type="file" id="importFilesInput" accept="image/*,.pdf,application/pdf" multiple hidden />
 
+  <!-- Toast Notification -->
   <div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
 
-  <main class="app-container">
-    <!-- Pure Frontend & Auto-Backup Reassurance Banner -->
-    <div class="privacy-speed-banner">
-      <span>🛡️ <strong>100% 純前端 App（唔經任何後台 Server）</strong>：喺你部手機入面一對一獨立運行，人哋完全睇唔到亦唔會互相影響！每影一張相自動存入手機防走失，隨時可一鍵輸出 <strong>「Original 原圖留底」＋「已清答案版」兩份 PDF</strong>。</span>
-      <span id="perfBadge" style="background:#059669;color:#fff;padding:3px 10px;border-radius:99px;font-size:13px;">⚡ 準備就緒（目前 0 頁）</span>
+  <!-- ===================================================================== -->
+  <!-- SCREEN A1: CamScanner 首頁 ＝「我的試卷文檔庫」                        -->
+  <!-- ===================================================================== -->
+  <section id="screenHome" class="app-screen active">
+    <header class="top-bar">
+      <div class="top-brand">
+        <img src="./icon.svg" alt="" class="top-logo" />
+        <span class="top-title">📁 我的試卷庫</span>
+        <span id="docCountBadge" class="top-badge">0 份</span>
+      </div>
+      <button type="button" id="btnQuickDemo" class="top-mini-btn">✨ 載入示範卷</button>
+    </header>
+
+    <main id="docListContainer" class="doc-list-area">
+      <!-- Empty State (Shown when 0 docs) -->
+      <div id="homeEmptyState" class="home-empty">
+        <div class="empty-icon">📷</div>
+        <div class="empty-title">撳下方「連續快拍」或「匯入相簿/PDF」開始</div>
+      </div>
+      <!-- Document List Cards -->
+      <div id="docList" class="doc-list"></div>
+    </main>
+
+    <footer class="home-bottom-dock">
+      <button type="button" id="btnStartCamera" class="cta-giant cta-camera">
+        <span class="cta-ico">📷</span>
+        <span>連續快拍</span>
+      </button>
+      <button type="button" id="btnImportFiles" class="cta-giant cta-import">
+        <span class="cta-ico">📄</span>
+        <span>匯入相簿 / 舊 PDF</span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN A2: 全螢幕「連續快拍」模式 (CamScanner Camera Page)             -->
+  <!-- ===================================================================== -->
+  <section id="screenCamera" class="app-screen">
+    <header class="cam-top-bar">
+      <button type="button" id="btnCloseCamera" class="cam-nav-btn">✕ 返回</button>
+      <span class="cam-title">📷 連續快拍</span>
+      <button type="button" id="btnNativeCamFallback" class="cam-nav-btn">系統相機</button>
+    </header>
+
+    <div id="camViewfinder" class="cam-viewfinder">
+      <video id="camVideo" autoplay playsinline muted></video>
+      <canvas id="camSimCanvas" class="cam-sim-canvas"></canvas>
+      <div class="cam-a4-guide"></div>
+      <div id="camFlash" class="cam-flash"></div>
     </div>
 
-    <!-- Step 1: Big Upload & Import Hero Card -->
-    <section class="hero-card" aria-label="匯入試卷或影相">
-      <div class="hero-top">
-        <h2 class="hero-title">① 第一步：手機極速連拍試卷 ／ 匯入舊作業 PDF（自動留存 Original 原圖底）</h2>
-        <button type="button" id="btnLoadDemo" class="mini-btn" style="flex:none;padding:6px 12px;background:#fffbeb;color:#b45309;border-color:#fcd34d;">
-          ✨ 載入 1 頁測試範例（可隨時刪除）
-        </button>
+    <footer class="cam-bottom-bar">
+      <button type="button" id="btnCamImport" class="cam-side-btn">
+        <span class="cam-side-ico">🖼️</span>
+        <span>相簿/PDF</span>
+      </button>
+
+      <button type="button" id="btnShutter" class="shutter-btn" aria-label="快門拍照">
+        <span class="shutter-inner"></span>
+      </button>
+
+      <button type="button" id="btnCameraDone" class="cam-done-btn">
+        <img id="camThumbImg" class="cam-thumb-img" alt="" hidden />
+        <span id="camSnapBadge" class="cam-snap-badge">0</span>
+        <span>完成 (<span id="camSnapCount">0</span>張) ➔</span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN B: 全螢幕大圖預覽＋底部極簡圖示工具列 (CamScanner Editor)       -->
+  <!-- ===================================================================== -->
+  <section id="screenEditor" class="app-screen">
+    <!-- Top 40px Minimal Nav Bar -->
+    <header id="editorTopBar" class="editor-top-bar">
+      <div class="nav-left">
+        <button type="button" id="btnBackToHome" class="nav-pill">⬅ 文檔庫</button>
+        <button type="button" id="btnAddMorePages" class="nav-pill">➕ 加頁</button>
       </div>
 
-      <!-- Hidden File Inputs -->
-      <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple style="display:none;" />
-      <input type="file" id="pdfInput" accept=".pdf,application/pdf" multiple style="display:none;" />
-      <input type="file" id="albumInput" accept="image/*" multiple style="display:none;" />
-
-      <div class="hero-grid">
-        <label for="cameraInput" class="big-upload-btn btn-camera">
-          <span class="btn-emoji">📷</span>
-          <span class="btn-main">手機即時連拍掃描</span>
-          <span class="btn-sub">直接開手機鏡頭狂影（自動存好 Original 原圖底）</span>
-        </label>
-
-        <label for="pdfInput" class="big-upload-btn btn-pdf" id="lblPdfImport">
-          <span class="btn-emoji">📄</span>
-          <span class="btn-main">匯入舊作業 PDF（清答案）</span>
-          <span class="btn-sub">自動拆開每一頁＋清走手寫/彩色答案</span>
-        </label>
-
-        <label for="albumInput" class="big-upload-btn btn-album">
-          <span class="btn-emoji">🖼️</span>
-          <span class="btn-main">相簿極速多選相片</span>
-          <span class="btn-sub">一次過揀幾十張拍好嘅試卷（秒速入袋唔卡機）</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- Step 2: Multi-Page Thumbnail Strip & 100% Clean Reset -->
-    <section class="panel-card" aria-label="多頁排序與管理">
-      <div class="panel-title">
-        <span>📑 已載入試卷頁數（每一頁都永久鎖定保存 Original 原圖底，隨時可重做或刪除）</span>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <span id="pageIndicator" style="font-size:15px;color:#0369a1;font-weight:800;">目前：0 頁（空白乾淨狀態）</span>
-          <button type="button" id="btnClearAllPages" class="btn-danger-outline">🗑️ 清空全部重設 (歸零)</button>
-        </div>
+      <div class="nav-center">
+        <button type="button" id="btnPrevPage" class="page-arrow" aria-label="上一頁">◀</button>
+        <span id="pageCounterText" class="page-counter">第 1 / 1 頁</span>
+        <button type="button" id="btnNextPage" class="page-arrow" aria-label="下一頁">▶</button>
       </div>
 
-      <!-- Shown when 0 pages -->
-      <div id="emptyStateBox" class="empty-state-box">
-        <div style="font-size:42px;">📸 📄</div>
-        <h3>目前係 0 頁空白乾淨狀態（冇任何範例阻住你出卷！）</h3>
-        <p>請撳上面 <strong>「📷 手機即時連拍掃描」</strong>、<strong>「🖼️ 相簿極速多選相片」</strong> 或 <strong>「📄 匯入舊作業 PDF」</strong> 開始。<br/>趕時間狂影都唔怕：每一頁都會自動鎖定保存 <strong>Original 原圖底</strong>，你可以一鍵同時下載「Original 原圖留底 PDF」同「已清答案學生版 PDF」！</p>
+      <div class="nav-right">
+        <button type="button" id="btnDeletePage" class="nav-pill danger">🗑️ 刪頁</button>
+      </div>
+    </header>
+
+    <!-- 75%–80%+ Full-Screen Exam Paper Stage -->
+    <div id="stageArea" class="stage-area">
+      <canvas id="editorCanvas"></canvas>
+
+      <!-- Top-left floating mini pill: Header Name Privacy Mask toggle -->
+      <button type="button" id="btnToggleHeaderMask" class="floating-pill left-pill active">
+        🛡️ 遮頂部名: 開
+      </button>
+
+      <!-- Top-right floating mini pill: Hold or Click to view Original -->
+      <button type="button" id="btnCompareOrig" class="floating-pill right-pill">
+        👁️ 按住睇原圖
+      </button>
+
+      <!-- Floating Manual Touch Draw Sub-Toolbar (Hidden unless 🖌️ 手動塗改 is active) -->
+      <div id="drawFloatingBar" class="draw-floating-bar" hidden>
+        <button type="button" id="toolRect" class="draw-sub-btn active">⬜ 拉白框</button>
+        <button type="button" id="toolBrush" class="draw-sub-btn">🖌️ 塗改筆</button>
+        <button type="button" id="toolLine" class="draw-sub-btn">📏 補橫線</button>
+        <button type="button" id="toolMaskbar" class="draw-sub-btn">🏷️ 遮名條</button>
+        <button type="button" id="btnUndoStroke" class="draw-sub-btn">↩️ 復原</button>
       </div>
 
-      <div id="pagesStrip" class="pages-strip" style="display:none;"></div>
-    </section>
+      <!-- 4-Corner Perspective Crop Overlay (Hidden unless ✂️ 裁切拉直 is clicked) -->
+      <div id="cropOverlay" class="crop-overlay" hidden>
+        <svg id="cropSvg" class="crop-svg" preserveAspectRatio="none">
+          <polygon id="cropPoly" points="0,0 100,0 100,100 0,100"></polygon>
+        </svg>
+        <div id="cropCorner0" class="crop-handle" data-corner="0"></div>
+        <div id="cropCorner1" class="crop-handle" data-corner="1"></div>
+        <div id="cropCorner2" class="crop-handle" data-corner="2"></div>
+        <div id="cropCorner3" class="crop-handle" data-corner="3"></div>
 
-    <!-- Step 3: Main Workspace (Left Controls + Right Live Before/After Canvas) -->
-    <div id="workspaceSection" class="workspace-grid">
-      <!-- Left Column: Smart Answer Eraser & Manual Tools -->
-      <aside class="panel-card">
-        <h2 class="panel-title">② 智能清答案 ＆ 遮私隱工具</h2>
-
-        <button type="button" id="btnMagicAll" class="magic-preset-btn">
-          <span>⚡ 全卷一鍵清答案（去紅藍筆＋去黑影＋遮名）</span>
-        </button>
-
-        <!-- Filter 1: Color Ink Eraser -->
-        <div class="control-group">
-          <div class="control-header">
-            <label class="control-label">
-              <input type="checkbox" id="chkColorInk" checked />
-              <span>🔴🔵 自動去紅筆批改／藍筆答案</span>
-            </label>
-            <span id="valColorInk" style="font-weight:800;color:#0284c7;">62%</span>
-          </div>
-          <p class="control-desc">一秒洗白老師紅筆剔號、交叉、分數同學生藍筆手寫字，保留黑色題目同橫線</p>
-          <div class="slider-row">
-            <span>清色力度</span>
-            <input type="range" id="rngColorInk" min="15" max="90" value="62" />
-          </div>
+        <div class="crop-action-bar">
+          <button type="button" id="btnCropAuto" class="crop-act-btn">📐 自動邊緣</button>
+          <button type="button" id="btnCropFull" class="crop-act-btn">⬜ 鋪滿全頁</button>
+          <button type="button" id="btnCropCancel" class="crop-act-btn cancel">✕ 取消</button>
+          <button type="button" id="btnCropApply" class="crop-act-btn confirm">✔ 確認裁切</button>
         </div>
-
-        <!-- Filter 2: Adaptive Shadow & Bleaching -->
-        <div class="control-group">
-          <div class="control-header">
-            <label class="control-label">
-              <input type="checkbox" id="chkWhiten" checked />
-              <span>☀️ 自動去黑影＋紙底漂白加深</span>
-            </label>
-            <span id="valWhiten" style="font-weight:800;color:#0284c7;">68%</span>
-          </div>
-          <p class="control-desc">積分圖極速演算法：將灰暗紙底同枱面陰影變純白（超慳打印機墨水！）</p>
-          <div class="slider-row">
-            <span>漂白力度</span>
-            <input type="range" id="rngWhiten" min="15" max="90" value="68" />
-          </div>
-        </div>
-
-        <!-- Filter 3: Light Pencil & Gray Handwriting Eraser -->
-        <div class="control-group">
-          <div class="control-header">
-            <label class="control-label">
-              <input type="checkbox" id="chkPencil" checked />
-              <span>✏️ 濾走淺色鉛筆字／草稿筆記</span>
-            </label>
-            <span id="valPencil" style="font-weight:800;color:#0284c7;">145</span>
-          </div>
-          <p class="control-desc">清除較淺灰嘅鉛筆手寫字，保留深黑印刷題目</p>
-          <div class="slider-row">
-            <span>濾鉛筆度</span>
-            <input type="range" id="rngPencil" min="85" max="200" value="145" />
-          </div>
-        </div>
-
-        <!-- Filter 4: Auto Header Privacy Mask -->
-        <div class="control-group">
-          <div class="control-header">
-            <label class="control-label">
-              <input type="checkbox" id="chkHeaderMask" checked />
-              <span>🛡️ 一鍵遮頂部學校名＋學生姓名</span>
-            </label>
-            <span id="valHeaderMask" style="font-weight:800;color:#0284c7;">9%</span>
-          </div>
-          <p class="control-desc">自動用白框遮走試卷最頂端嘅學校名、學生名同班別（保障私隱）</p>
-          <div class="slider-row">
-            <span>遮蓋高度</span>
-            <input type="range" id="rngHeaderMask" min="4" max="22" step="0.5" value="9.0" />
-          </div>
-        </div>
-
-        <!-- Manual Touch Tools -->
-        <div class="control-group" style="background:#fffbeb;border-color:#fde68a;">
-          <div class="control-header">
-            <span style="font-size:17px;font-weight:800;color:#92400e;">🖐️ 手動塗改筆 ／ 拉白框 ／ 補橫線</span>
-          </div>
-          <p class="control-desc" style="color:#78350f;">直接喺試卷畫面上用手指拉框／塗抹（只改「清理後版本」，絕對唔會破壞 Original 原圖底！）：</p>
-
-          <div class="tool-btn-grid">
-            <button type="button" id="toolRect" class="tool-btn active">⬜ 拉白框遮答案</button>
-            <button type="button" id="toolBrush" class="tool-btn">🖌️ 塗改液筆</button>
-            <button type="button" id="toolLine" class="tool-btn" style="grid-column: span 2;">📏 補劃填充橫線 (________)</button>
-          </div>
-
-          <div class="slider-row" style="margin-bottom:10px;">
-            <span>筆刷粗幼</span>
-            <input type="range" id="rngBrushSize" min="8" max="70" value="28" />
-            <span id="valBrushSize">28px</span>
-          </div>
-
-          <div class="mini-btn-row">
-            <button type="button" id="btnUndo" class="mini-btn">↩️ 復原上一步</button>
-            <button type="button" id="btnClearStrokes" class="mini-btn">🗑️ 清除手塗</button>
-          </div>
-        </div>
-
-        <!-- Geometry & Batch Apply -->
-        <div class="control-group">
-          <div class="slider-row" style="margin-bottom:10px;">
-            <span>✂️ 四邊切黑邊</span>
-            <input type="range" id="rngCrop" min="0" max="12" step="0.5" value="0" />
-            <span id="valCrop">0%</span>
-          </div>
-          <div class="mini-btn-row" style="margin-bottom:8px;">
-            <button type="button" id="btnRotateLeft" class="mini-btn">↺ 左轉 90°</button>
-            <button type="button" id="btnRotateRight" class="mini-btn">↻ 右轉 90°</button>
-            <button type="button" id="btnResetPage" class="mini-btn" style="color:#0369a1;border-color:#7dd3fc;">🔄 還原此頁原圖重做</button>
-          </div>
-          <button type="button" id="btnApplyAllPages" class="mini-btn primary" style="width:100%;padding:11px;">
-            ⚡ 將呢頁嘅清答案設定「套用到全部頁」
-          </button>
-        </div>
-      </aside>
-
-      <!-- Right Column: Live Canvas Stage (Dual Version View) -->
-      <section class="panel-card">
-        <div class="canvas-toolbar">
-          <div class="view-mode-btns">
-            <button type="button" id="modeSplit" class="mode-pill active">🌗 雙版本並排（Original 原圖底 ⇄ 清理後版）</button>
-            <button type="button" id="modeAfter" class="mode-pill">✨ 只睇「清理後版本」（放大手塗）</button>
-            <button type="button" id="modeBefore" class="mode-pill">📷 只睇「Original 原圖留底」</button>
-          </div>
-          <button type="button" id="btnDeleteCurrentPage" class="btn-danger-outline" style="padding:6px 12px;">🗑️ 刪除此頁</button>
-        </div>
-
-        <div class="canvas-stage-wrap">
-          <div id="beforeBox" class="canvas-box">
-            <span class="canvas-tag">📷 版本 A：Original 原圖留底（永久保護・隨時可重做）</span>
-            <canvas id="beforeCanvas"></canvas>
-          </div>
-          <div id="afterBox" class="canvas-box">
-            <span class="canvas-tag cleaned">✨ 版本 B：已清答案學生版（可直接喺度拉白框／塗改／補橫線）</span>
-            <canvas id="editorCanvas"></canvas>
-          </div>
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <!-- Sticky Bottom Bar: Dual Version PDF Export (Both / Original Only / Cleaned Only / AirPrint) -->
-  <footer class="export-bar">
-    <div class="export-inner">
-      <div class="naming-row">
-        <span style="font-weight:800;font-size:15.5px;color:#0f172a;">③ 檔案命名：</span>
-        <select id="selGrade" class="select-pill" aria-label="選擇年級">
-          <option value="P1">小一 (P1)</option>
-          <option value="P2">小二 (P2)</option>
-          <option value="P3" selected>小三 (P3)</option>
-          <option value="P4">小四 (P4)</option>
-          <option value="P5">小五 (P5)</option>
-          <option value="P6">小六 (P6)</option>
-          <option value="全級">綜合年級</option>
-        </select>
-        <select id="selSubject" class="select-pill" aria-label="選擇科目">
-          <option value="英文" selected>英文科</option>
-          <option value="中文">中文科</option>
-          <option value="數學">數學科</option>
-          <option value="常識人文">常識/人文科</option>
-          <option value="評估溫習">評估溫習</option>
-        </select>
-        <input type="text" id="inpFilename" class="filename-input" style="min-width:210px;" aria-label="PDF 檔案名稱前綴" />
-      </div>
-
-      <div class="export-btns">
-        <button type="button" id="btnDownloadBothPdf" class="action-export-btn btn-download-both">
-          <span>⚡ 同時下載「兩個版本 PDF」（Original原圖 + 清答案版，共 <span id="pdfPageCount">0</span> 頁）</span>
-        </button>
-        <button type="button" id="btnDownloadOrigPdf" class="action-export-btn btn-download-orig">
-          <span>📷 只下載 Original 原圖留底 PDF</span>
-        </button>
-        <button type="button" id="btnDownloadPdf" class="action-export-btn btn-download-pdf">
-          <span>✨ 只下載已清答案學生版 PDF</span>
-        </button>
-        <button type="button" id="btnPrint" class="action-export-btn btn-print">
-          <span>🖨️ AirPrint 列印</span>
-        </button>
       </div>
     </div>
-  </footer>
 
-  <!-- Print-only full-bleed A4 pages -->
+    <!-- Bottom Minimal Icon Strip + Green Export Button -->
+    <footer id="editorBottomDock" class="editor-bottom-dock">
+      <div class="filter-tool-strip">
+        <button type="button" id="fltOriginal" class="strip-btn" data-filter="original">
+          <span class="s-ico">📷</span>
+          <span class="s-txt">原圖</span>
+        </button>
+        <button type="button" id="fltMagicColor" class="strip-btn" data-filter="magicColor">
+          <span class="s-ico">🪄</span>
+          <span class="s-txt">增亮魔術色</span>
+        </button>
+        <button type="button" id="fltBw" class="strip-btn" data-filter="bw">
+          <span class="s-ico">✨</span>
+          <span class="s-txt">高清黑白</span>
+        </button>
+        <button type="button" id="fltCleanAnswer" class="strip-btn active" data-filter="cleanAnswer">
+          <span class="s-ico">🧹</span>
+          <span class="s-txt">自動清答案</span>
+        </button>
+        <button type="button" id="btnOpenCrop" class="strip-btn">
+          <span class="s-ico">✂️</span>
+          <span class="s-txt">裁切拉直</span>
+        </button>
+        <button type="button" id="btnToggleDraw" class="strip-btn">
+          <span class="s-ico">🖌️</span>
+          <span class="s-txt">手動塗改</span>
+        </button>
+        <button type="button" id="btnRotate" class="strip-btn">
+          <span class="s-ico">🔄</span>
+          <span class="s-txt">旋轉</span>
+        </button>
+      </div>
+
+      <button type="button" id="btnOpenExportSheet" class="export-main-btn">
+        📤 匯出 / 傳送 PDF
+      </button>
+    </footer>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- BOTTOM SHEET: 匯出 / 傳送 PDF (Web Share + 直接預覽 + 下載提示)         -->
+  <!-- ===================================================================== -->
+  <div id="exportSheetBackdrop" class="sheet-backdrop" hidden>
+    <div id="exportSheet" class="bottom-sheet" role="dialog" aria-label="匯出或傳送 PDF">
+      <div class="sheet-header">
+        <input type="text" id="inpDocTitle" class="sheet-title-input" aria-label="試卷檔案名稱" />
+        <button type="button" id="btnCloseExportSheet" class="sheet-close-btn">✕</button>
+      </div>
+
+      <div class="version-tabs">
+        <button type="button" id="verCleaned" class="ver-tab active" data-ver="cleaned">
+          ✨ 已清答案版 PDF
+        </button>
+        <button type="button" id="verOriginal" class="ver-tab" data-ver="original">
+          📷 Original 原圖版 PDF
+        </button>
+        <button type="button" id="verBoth" class="ver-tab" data-ver="both">
+          ⚡ 兩份一齊（清答案＋原圖）
+        </button>
+      </div>
+
+      <div class="sheet-actions">
+        <button type="button" id="btnSharePdf" class="sheet-big-btn share-primary">
+          📲 直接傳去 WhatsApp / AirDrop / 儲存到手機（最推薦！）
+        </button>
+        <button type="button" id="btnPreviewPdf" class="sheet-big-btn preview-secondary">
+          📖 直接喺畫面打開 PDF 預覽（可即印／右上角分享）
+        </button>
+        <button type="button" id="btnDownloadPdfFile" class="sheet-big-btn download-tertiary">
+          ⬇️ 下載檔案落手機
+        </button>
+      </div>
+
+      <div id="downloadWhereHint" class="download-where-hint">
+        📱 iPhone 請撳網址列隔離藍色「↓」圖示開返檔案；Android 請去「下載項目」搵
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Full-Screen PDF Viewer Modal (for 📖 直接喺畫面打開 PDF 預覽) -->
+  <div id="pdfViewerModal" class="pdf-viewer-modal" hidden>
+    <header class="pdf-viewer-bar">
+      <button type="button" id="btnClosePdfViewer" class="cam-nav-btn">⬅ 返回試卷</button>
+      <span id="pdfViewerTitle" class="cam-title">PDF 預覽</span>
+      <div style="display:flex;gap:6px;">
+        <button type="button" id="btnPrintFromViewer" class="cam-nav-btn">🖨️ 列印</button>
+        <a id="lnkOpenPdfNewTab" href="#" target="_blank" rel="noopener" class="cam-nav-btn" style="text-decoration:none;">↗ 新分頁</a>
+      </div>
+    </header>
+    <iframe id="pdfViewerFrame" class="pdf-viewer-frame" title="PDF 預覽"></iframe>
+  </div>
+
+  <!-- Rename Document Modal (Inline Minimal Dialog) -->
+  <div id="renameModalBackdrop" class="sheet-backdrop" hidden>
+    <div class="rename-dialog" role="dialog" aria-label="修改文檔名稱">
+      <div class="rename-title">✏️ 修改試卷名稱</div>
+      <input type="text" id="inpRenameDoc" class="sheet-title-input" />
+      <div class="rename-btns">
+        <button type="button" id="btnCancelRename" class="crop-act-btn cancel">取消</button>
+        <button type="button" id="btnConfirmRename" class="crop-act-btn confirm">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Container -->
   <div id="printContainer"></div>
 
-  <!-- Scripts (100% Local Bundle, No External Server Required) -->
+  <!-- Local Scripts -->
   <script src="./vendor/pdf.min.js"></script>
   <script src="./pdf-lib.js"></script>
   <script src="./demo-sheet.js"></script>

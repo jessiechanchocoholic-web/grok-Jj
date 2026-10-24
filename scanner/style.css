@@ -1,0 +1,933 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
+  touch-action: manipulation;
+}
+
+button, input {
+  font: inherit;
+  border: none;
+  outline: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.app-screen {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-screen.active {
+  display: flex;
+}
+
+/* Toast */
+.status-toast {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-16px);
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  max-width: 92vw;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ========================================================================= */
+/* SCREEN A1: CamScanner 首頁（我的試卷文檔庫）                               */
+/* ========================================================================= */
+.top-bar {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.top-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.top-badge {
+  background: #0d9488;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.top-mini-btn {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #334155;
+  padding: 5px 10px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.doc-list-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #0b1120;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.doc-card:active {
+  background: #283548;
+}
+
+.doc-thumb {
+  width: 54px;
+  height: 72px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid #475569;
+  flex-shrink: 0;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.doc-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doc-name {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-meta {
+  font-size: 12.5px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-page-pill {
+  background: #0284c7;
+  color: #fff;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.doc-act-btn {
+  background: #334155;
+  color: #f8fafc;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.doc-act-btn.share {
+  background: #10b981;
+  color: #fff;
+}
+
+.doc-act-btn.del {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.home-bottom-dock {
+  padding: 12px 14px 16px;
+  background: #0f172a;
+  border-top: 1px solid #1e293b;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.cta-giant {
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.cta-camera {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.cta-import {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+}
+
+.cta-ico {
+  font-size: 21px;
+}
+
+/* ========================================================================= */
+/* SCREEN A2: 全螢幕「連續快拍」模式 (85% Viewfinder)                          */
+/* ========================================================================= */
+.cam-top-bar {
+  height: 6%;
+  min-height: 40px;
+  max-height: 46px;
+  padding: 0 12px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cam-nav-btn {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  padding: 5px 11px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cam-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.cam-viewfinder {
+  position: relative;
+  flex: 1;
+  height: 85%;
+  background: #050811;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#camVideo, .cam-sim-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cam-sim-canvas {
+  position: absolute;
+  inset: 0;
+  object-fit: contain;
+}
+
+.cam-a4-guide {
+  position: absolute;
+  inset: 5% 7%;
+  border: 2px dashed rgba(16, 185, 129, 0.75);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.cam-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.cam-flash.flash {
+  opacity: 0.9;
+}
+
+.cam-bottom-bar {
+  height: 9%;
+  min-height: 64px;
+  max-height: 76px;
+  padding: 0 14px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cam-side-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.shutter-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.shutter-btn:active .shutter-inner {
+  transform: scale(0.86);
+}
+
+.shutter-inner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #10b981;
+  transition: transform 0.1s ease;
+}
+
+.cam-done-btn {
+  position: relative;
+  background: #10b981;
+  color: #fff;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cam-thumb-img {
+  width: 26px;
+  height: 34px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid #fff;
+}
+
+.cam-snap-badge {
+  background: #047857;
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+/* ========================================================================= */
+/* SCREEN B: 全螢幕大圖預覽＋底部極簡圖示工具列 (75%–82% Stage Height!)       */
+/* ========================================================================= */
+.editor-top-bar {
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 0 8px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-pill {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nav-pill.danger {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.nav-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-arrow {
+  background: #1e293b;
+  color: #38bdf8;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.page-counter {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+/* Stage Area: >= 76% of 667px (513px) and >= 81% of 844px (690px) */
+.stage-area {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: #090d16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4px;
+}
+
+#editorCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  touch-action: none;
+}
+
+.floating-pill {
+  position: absolute;
+  top: 8px;
+  z-index: 15;
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.left-pill {
+  left: 8px;
+}
+
+.left-pill.active {
+  background: rgba(13, 148, 136, 0.9);
+  border-color: #2dd4bf;
+}
+
+.right-pill {
+  right: 8px;
+}
+
+.right-pill.showing-orig {
+  background: #f59e0b;
+  color: #000;
+  border-color: #fde68a;
+}
+
+/* Floating Manual Touch Sub-Toolbar */
+.draw-floating-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #38bdf8;
+  border-radius: 12px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 96vw;
+  overflow-x: auto;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.draw-sub-btn {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.draw-sub-btn.active {
+  background: #0284c7;
+  color: #fff;
+}
+
+/* 4-Corner Perspective Crop Overlay */
+.crop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.25);
+  touch-action: none;
+}
+
+.crop-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#cropPoly {
+  fill: rgba(16, 185, 129, 0.16);
+  stroke: #10b981;
+  stroke-width: 2.5;
+}
+
+.crop-handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  margin-top: -14px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.95);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  touch-action: none;
+}
+
+.crop-action-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 5px;
+  display: flex;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.crop-act-btn {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.crop-act-btn.confirm {
+  background: #10b981;
+  color: #fff;
+}
+
+.crop-act-btn.cancel {
+  background: #475569;
+  color: #fff;
+}
+
+/* Bottom Dock (110px total height: 60px filter strip + 50px green export button) */
+.editor-bottom-dock {
+  height: 110px;
+  min-height: 110px;
+  max-height: 110px;
+  background: #0f172a;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 8px 6px;
+}
+
+.filter-tool-strip {
+  height: 54px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  align-items: center;
+}
+
+.strip-btn {
+  height: 50px;
+  background: #1e293b;
+  color: #cbd5e1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 1px;
+  cursor: pointer;
+}
+
+.strip-btn.active {
+  background: #0284c7;
+  color: #fff;
+  box-shadow: 0 0 0 1.5px #38bdf8;
+}
+
+.s-ico {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.s-txt {
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.export-main-btn {
+  height: 44px;
+  width: 100%;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-size: 15.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+}
+
+/* ========================================================================= */
+/* BOTTOM SHEET: 匯出 / 傳送 PDF                                              */
+/* ========================================================================= */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bottom-sheet {
+  width: 100%;
+  max-width: 520px;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  border-radius: 20px 20px 0 0;
+  padding: 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet-title-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.sheet-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #334155;
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.version-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.ver-tab {
+  background: #0f172a;
+  color: #94a3b8;
+  border: 1.5px solid #334155;
+  border-radius: 10px;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ver-tab.active {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border-color: #10b981;
+}
+
+.sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-big-btn {
+  width: 100%;
+  padding: 13px 12px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.share-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.preview-secondary {
+  background: #0284c7;
+  color: #fff;
+}
+
+.download-tertiary {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.download-where-hint {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fde68a;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* In-App PDF Viewer Modal */
+.pdf-viewer-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-bar {
+  height: 46px;
+  padding: 0 12px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pdf-viewer-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #334155;
+}
+
+/* Rename Dialog */
+.rename-dialog {
+  width: 90%;
+  max-width: 360px;
+  margin: auto;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rename-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.rename-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Print Only */
+#printContainer {
+  display: none;
+}
+
+@media print {
+  body > *:not(#printContainer) {
+    display: none !important;
+  }
+  #printContainer {
+    display: block !important;
+  }
+  .print-page {
+    page-break-after: always;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .print-page img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
