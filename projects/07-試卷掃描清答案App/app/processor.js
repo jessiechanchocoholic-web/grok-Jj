@@ -161,26 +161,40 @@
     var yEnd = Math.max(yStart + 1, Math.floor(h * 0.85));
     var ySpan = yEnd - yStart;
 
-    var bestColLen = 0, px0 = 0, px1 = w - 1;
-    var curStart = -1;
+    var colValid = new Uint8Array(w);
     for (var x = 0; x < w; x++) {
       var brightCnt = 0;
       for (var y = yStart; y < yEnd; y++) {
-        if (lumArr[y * w + x] > 200) brightCnt++;
+        if (lumArr[y * w + x] > 195) brightCnt++;
       }
-      var ratio = brightCnt / ySpan;
-      if (ratio > 0.45) {
-        if (curStart < 0) curStart = x;
-      } else {
-        if (curStart >= 0) {
-          var len = x - curStart;
-          if (len > bestColLen) {
-            bestColLen = len;
-            px0 = curStart;
-            px1 = x - 1;
-          }
-          curStart = -1;
+      if (brightCnt / ySpan > 0.45) colValid[x] = 1;
+    }
+    // Bridge interior thin vertical border/table line gaps <= 25px so internal lines never split the paper
+    var cGapStart = -1;
+    for (var cx = 0; cx < w; cx++) {
+      if (!colValid[cx]) {
+        if (cGapStart < 0) cGapStart = cx;
+      } else if (cGapStart >= 0) {
+        if (cGapStart > 0 && (cx - cGapStart) <= 25) {
+          for (var fillX = cGapStart; fillX < cx; fillX++) colValid[fillX] = 1;
         }
+        cGapStart = -1;
+      }
+    }
+
+    var bestColLen = 0, px0 = 0, px1 = w - 1;
+    var curStart = -1;
+    for (var x2 = 0; x2 < w; x2++) {
+      if (colValid[x2]) {
+        if (curStart < 0) curStart = x2;
+      } else if (curStart >= 0) {
+        var len = x2 - curStart;
+        if (len > bestColLen) {
+          bestColLen = len;
+          px0 = curStart;
+          px1 = x2 - 1;
+        }
+        curStart = -1;
       }
     }
     if (curStart >= 0) {
@@ -197,27 +211,41 @@
     }
 
     var xSpan = Math.max(1, px1 - px0 + 1);
-    var bestRowLen = 0, py0 = 0, py1 = h - 1;
-    curStart = -1;
+    var rowValid = new Uint8Array(h);
     for (var ry = 0; ry < h; ry++) {
       var rBright = 0;
       var rOff = ry * w;
       for (var rx = px0; rx <= px1; rx++) {
-        if (lumArr[rOff + rx] > 200) rBright++;
+        if (lumArr[rOff + rx] > 195) rBright++;
       }
-      var rRatio = rBright / xSpan;
-      if (rRatio > 0.45) {
-        if (curStart < 0) curStart = ry;
-      } else {
-        if (curStart >= 0) {
-          var rLen = ry - curStart;
-          if (rLen > bestRowLen) {
-            bestRowLen = rLen;
-            py0 = curStart;
-            py1 = ry - 1;
-          }
-          curStart = -1;
+      if (rBright / xSpan > 0.45) rowValid[ry] = 1;
+    }
+    // Bridge interior horizontal table borders / section dividers <= 35px so wide tables never truncate the page
+    var rGapStart = -1;
+    for (var ry2 = 0; ry2 < h; ry2++) {
+      if (!rowValid[ry2]) {
+        if (rGapStart < 0) rGapStart = ry2;
+      } else if (rGapStart >= 0) {
+        if (rGapStart > 0 && (ry2 - rGapStart) <= 35) {
+          for (var fillY = rGapStart; fillY < ry2; fillY++) rowValid[fillY] = 1;
         }
+        rGapStart = -1;
+      }
+    }
+
+    var bestRowLen = 0, py0 = 0, py1 = h - 1;
+    curStart = -1;
+    for (var ry3 = 0; ry3 < h; ry3++) {
+      if (rowValid[ry3]) {
+        if (curStart < 0) curStart = ry3;
+      } else if (curStart >= 0) {
+        var rLen = ry3 - curStart;
+        if (rLen > bestRowLen) {
+          bestRowLen = rLen;
+          py0 = curStart;
+          py1 = ry3 - 1;
+        }
+        curStart = -1;
       }
     }
     if (curStart >= 0) {
@@ -334,7 +362,7 @@
       }).join(';');
     }
     return [
-      'v3.3',
+      'v3.4',
       settings.filterMode || 'cleanAnswer',
       settings.eraseStrength || 'standard',
       settings.rotation || 0,
@@ -1210,7 +1238,7 @@
 
     // Speech-box border slash & below-box handwritten annotation cleanup via Connected Components & Interior Hole Envelope
     // (ZERO hardcoded coordinates, ZERO fake drawn arcs!)
-    if (speechBox && !isGentle) {
+    if (speechBox) {
       var bxMin = Math.max(topFrame.x0, botFrame.x0);
       var bxMax = Math.min(topFrame.x1, botFrame.x1);
       var firstUl = speechBox.innerUls[0];
@@ -1516,30 +1544,135 @@
       }
     }
 
-    // For multi-row checkbox grids (checkboxes.length >= 6), clear inter-row blank strips above/below each upper checklist row
-    if (checkboxes.length >= 6 && !isGentle) {
-      var gridYMin = Math.floor(0.10 * h), gridYMax = Math.floor(0.42 * h);
-      for (var icbg = 0; icbg < checkboxes.length; icbg++) {
-        var cbg = checkboxes[icbg];
-        if (cbg.by0 < gridYMin || cbg.by0 > gridYMax) continue;
-        var maxDxG = cbg.bx0 > 0.40 * w ? 155 : 185;
-        for (var dxG = 6; dxG < maxDxG; dxG++) {
-          var xG = cbg.bx1 + dxG;
-          if (xG >= rightCut) break;
-          var rTopG = Math.round(cbg.by0 - 3 - 0.026 * dxG);
-          var rBotG = Math.round(cbg.by1 + 1 - 0.026 * dxG);
-          for (var yG1 = Math.max(0, rBotG); yG1 < Math.min(h, rBotG + 42); yG1++) {
-            outLum[yG1 * w + xG] = 255;
+    // Adaptive Column-Grouped Inter-Row Slash Clearance & Strict Protected Text Row Bands
+    if (checkboxes.length >= 2) {
+      var gridYMin = Math.floor(0.10 * h), gridYMax = Math.floor(0.45 * h);
+      var gridCbs = [];
+      for (var icb0 = 0; icb0 < checkboxes.length; icb0++) {
+        var cbItem = checkboxes[icb0];
+        cbItem.cx = (cbItem.bx0 + cbItem.bx1) * 0.5;
+        cbItem.cy = (cbItem.by0 + cbItem.by1) * 0.5;
+        cbItem.bh = cbItem.by1 - cbItem.by0;
+        if (cbItem.by0 >= gridYMin && cbItem.by0 <= gridYMax) {
+          gridCbs.push(cbItem);
+        }
+      }
+      gridCbs.sort(function (a, b) { return a.cx - b.cx; });
+
+      var cbCols = [];
+      for (var gci = 0; gci < gridCbs.length; gci++) {
+        var gcb = gridCbs[gci];
+        var placedCol = false;
+        for (var coli = 0; coli < cbCols.length; coli++) {
+          var colArr = cbCols[coli];
+          var meanColCx = 0;
+          for (var cki = 0; cki < colArr.length; cki++) meanColCx += colArr[cki].cx;
+          meanColCx /= colArr.length;
+          if (Math.abs(gcb.cx - meanColCx) <= 50) {
+            colArr.push(gcb);
+            placedCol = true;
+            break;
           }
-          for (var yG2 = Math.max(0, rTopG - 22); yG2 < Math.min(h, rTopG); yG2++) {
-            outLum[yG2 * w + xG] = 255;
+        }
+        if (!placedCol) cbCols.push([gcb]);
+      }
+
+      var validCols = [];
+      for (var vci = 0; vci < cbCols.length; vci++) {
+        if (cbCols[vci].length >= 2) {
+          cbCols[vci].sort(function (a, b) { return a.cy - b.cy; });
+          validCols.push(cbCols[vci]);
+        }
+      }
+
+      // Compute rowSlope from left-right paired checkboxes across columns (0.0 on horizontal sheets, ~ -0.026 on tilted sheets)
+      var pairSlopes = [];
+      if (validCols.length >= 2) {
+        var colL = validCols[0], colR = validCols[1];
+        var pairCount = Math.min(colL.length, colR.length);
+        for (var pk = 0; pk < pairCount; pk++) {
+          var dxPair = colR[pk].cx - colL[pk].cx;
+          var dyPair = colR[pk].cy - colL[pk].cy;
+          if (dxPair >= 180 && dxPair <= 650 && Math.abs(dyPair) <= 35) {
+            var rawS = dyPair / dxPair;
+            pairSlopes.push(Math.max(-0.028, Math.min(0.028, rawS)));
           }
         }
       }
-    }
+      pairSlopes.sort(function (a, b) { return a - b; });
+      var rowSlope = pairSlopes.length > 0 ? pairSlopes[pairSlopes.length >> 1] : 0.0;
 
-    // Clean small residual slash fragments sitting strictly in the blank inter-row gap between checkboxes
-    if (checkboxes.length >= 2) {
+      // Helper to check if (x, y) falls inside ANY checkbox Protected Text Row Band [by0 - 4 + slope*dx, by1 + 2 + slope*dx]
+      function isInProtectedCheckboxRow(qx, qy) {
+        for (var pci2 = 0; pci2 < checkboxes.length; pci2++) {
+          var pcb = checkboxes[pci2];
+          if (qx >= pcb.bx0 - 55 && qx <= pcb.bx1 + 240) {
+            var pdx = Math.max(0, qx - pcb.bx1);
+            var pTop = pcb.by0 - 4 + rowSlope * pdx;
+            var pBot = pcb.by1 + 2 + rowSlope * pdx;
+            if (qy >= pTop && qy <= pBot) return true;
+          }
+        }
+        return false;
+      }
+
+      // Only clear inter-row blank gaps when vertical spacing between adjacent checkboxes is wide (>= 32px, e.g. double-spaced worksheets)
+      for (var vcolIdx = 0; vcolIdx < validCols.length; vcolIdx++) {
+        var colCbs = validCols[vcolIdx];
+        var maxDxCol = colCbs[0].bx0 > 0.40 * w ? 155 : 185;
+
+        // 1) Above the first checkbox in this column (if wide spacing)
+        if (colCbs.length >= 2 && (colCbs[1].by0 - colCbs[0].by1) >= 32) {
+          var cbFirst = colCbs[0];
+          for (var dxF = 6; dxF < maxDxCol; dxF++) {
+            var xF = cbFirst.bx1 + dxF;
+            if (xF >= rightCut) break;
+            var rTopF = Math.round(cbFirst.by0 - 4 + rowSlope * dxF);
+            for (var yF = Math.max(0, rTopF - 18); yF < Math.min(h, rTopF); yF++) {
+              if (!isInProtectedCheckboxRow(xF, yF)) {
+                outLum[yF * w + xF] = 255;
+              }
+            }
+          }
+        }
+
+        // 2) Strictly between adjacent checkboxes (cbUpper and cbLower) in the same column
+        for (var rIdx = 0; rIdx < colCbs.length - 1; rIdx++) {
+          var cbUpper = colCbs[rIdx];
+          var cbLower = colCbs[rIdx + 1];
+          var rawGap = cbLower.by0 - cbUpper.by1;
+          if (rawGap < 32) continue; // Single-spaced / tight rows (e.g. 21px gap): never wipe between rows!
+
+          for (var dxG = 6; dxG < maxDxCol; dxG++) {
+            var xG = cbUpper.bx1 + dxG;
+            if (xG >= rightCut) break;
+            var gapTop = Math.round(cbUpper.by1 + 2 + rowSlope * dxG);
+            var gapBot = Math.round(cbLower.by0 - 4 + rowSlope * (xG - cbLower.bx1));
+            for (var yG = Math.max(0, gapTop); yG < Math.min(h, gapBot); yG++) {
+              if (!isInProtectedCheckboxRow(xG, yG)) {
+                outLum[yG * w + xG] = 255;
+              }
+            }
+          }
+        }
+
+        // 3) Below the last checkbox of the right column (or second-to-last if bottom item (11) is a full-width other line)
+        var lastCb = colCbs[colCbs.length - 1];
+        if (colCbs.length >= 2 && (lastCb.by0 - colCbs[colCbs.length - 2].by1) >= 32 && lastCb.by1 <= Math.floor(0.39 * h)) {
+          for (var dxL = 6; dxL < maxDxCol; dxL++) {
+            var xL = lastCb.bx1 + dxL;
+            if (xL >= rightCut) break;
+            var rBotL = Math.round(lastCb.by1 + 2 + rowSlope * dxL);
+            for (var yL = Math.max(0, rBotL); yL < Math.min(h, rBotL + 36); yL++) {
+              if (!isInProtectedCheckboxRow(xL, yL)) {
+                outLum[yL * w + xL] = 255;
+              }
+            }
+          }
+        }
+      }
+
+      // Clean small residual slash fragments sitting strictly in the blank inter-row gap outside all Protected Text Row Bands
       var remBin = new Uint8Array(total);
       for (var ir = 0; ir < total; ir++) {
         if (outLum[ir] < 225) remBin[ir] = 1;
@@ -1562,20 +1695,8 @@
         var ry0 = ccRem.minY[cidR], ry1 = ccRem.maxY[cidR] + 1;
         var rw = rx1 - rx0, rh = ry1 - ry0;
         if (rx0 >= cbSpanMinX && rx1 <= cbSpanMaxX && ry0 >= cbMinY && ry1 <= cbMaxY && rh <= 18 && rw <= 25) {
-          var inAnyRow = false;
-          for (var icb2 = 0; icb2 < checkboxes.length; icb2++) {
-            var cb2 = checkboxes[icb2];
-            if (rx0 >= cb2.bx0 - 55 && rx0 <= cb2.bx1 + 210) {
-              var dx2 = Math.max(0, ((rx0 + rx1) * 0.5) - cb2.bx1);
-              var rowTop = cb2.by0 - 5 - 0.026 * dx2;
-              var rowBot = cb2.by1 + 2 - 0.026 * dx2;
-              if (ry1 > rowTop && ry0 < rowBot) {
-                inAnyRow = true;
-                break;
-              }
-            }
-          }
-          if (!inAnyRow) {
+          var midX = (rx0 + rx1) * 0.5;
+          if (!isInProtectedCheckboxRow(midX, ry0) && !isInProtectedCheckboxRow(midX, ry1 - 1) && !isInProtectedCheckboxRow(midX, (ry0 + ry1) * 0.5)) {
             var rp0 = ccRem.compStart[cidR], rp1 = ccRem.compStart[cidR + 1];
             for (var rpi = rp0; rpi < rp1; rpi++) {
               outLum[ccRem.compPixels[rpi]] = 255;
