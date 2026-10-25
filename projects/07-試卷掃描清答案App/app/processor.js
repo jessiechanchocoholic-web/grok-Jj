@@ -358,14 +358,21 @@
     var grid = new Float32Array(sw * sh);
 
     for (var sy = 0; sy < sh; sy++) {
-      var py = Math.min(h - 1, sy * step);
-      var srcRow = py * w;
+      var py0 = sy * step;
+      var py1 = Math.min(h, py0 + step);
       var gRow = sy * sw;
       for (var sx = 0; sx < sw; sx++) {
-        var px = Math.min(w - 1, sx * step);
-        var v1 = lumArr[srcRow + px];
-        var v2 = lumArr[srcRow + Math.min(w - 1, px + 2)];
-        grid[gRow + sx] = v1 > v2 ? v1 : v2;
+        var px0 = sx * step;
+        var px1 = Math.min(w, px0 + step);
+        var maxCell = 0;
+        for (var py = py0; py < py1; py++) {
+          var srcRow = py * w;
+          for (var px = px0; px < px1; px++) {
+            var v = lumArr[srcRow + px];
+            if (v > maxCell) maxCell = v;
+          }
+        }
+        grid[gRow + sx] = maxCell;
       }
     }
 
@@ -540,6 +547,55 @@
     var slope = Math.abs(den) > 1e-8 ? num / den : 0;
     var intercept = meanY - slope * meanX;
     return { slope: slope, intercept: intercept };
+  }
+
+  /**
+   * 二次多項式最小二乘擬合 y = a*x^2 + b*x + c (用於平滑還原大型插圖頂部拱形外框包絡線)
+   */
+  function fitPoly2(xs, ys, n) {
+    if (n < 3) return { a: 0, b: 0, c: n > 0 ? ys[0] : 0 };
+    var x0 = xs[0];
+    var s0 = n, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+    var ty0 = 0, ty1 = 0, ty2 = 0;
+    for (var i = 0; i < n; i++) {
+      var u = xs[i] - x0;
+      var u2 = u * u;
+      var y = ys[i];
+      s1 += u;
+      s2 += u2;
+      s3 += u2 * u;
+      s4 += u2 * u2;
+      ty0 += y;
+      ty1 += u * y;
+      ty2 += u2 * y;
+    }
+    var m = [
+      [s4, s3, s2, ty2],
+      [s3, s2, s1, ty1],
+      [s2, s1, s0, ty0]
+    ];
+    for (var k = 0; k < 3; k++) {
+      var piv = k;
+      for (var r = k + 1; r < 3; r++) {
+        if (Math.abs(m[r][k]) > Math.abs(m[piv][k])) piv = r;
+      }
+      var tmp = m[k]; m[k] = m[piv]; m[piv] = tmp;
+      var div = m[k][k];
+      if (Math.abs(div) < 1e-12) return { a: 0, b: 0, c: ty0 / n };
+      for (var c = k; c < 4; c++) m[k][c] /= div;
+      for (var r2 = 0; r2 < 3; r2++) {
+        if (r2 !== k) {
+          var f = m[r2][k];
+          for (var c2 = k; c2 < 4; c2++) m[r2][c2] -= f * m[k][c2];
+        }
+      }
+    }
+    var A = m[0][3], B = m[1][3], C = m[2][3];
+    return {
+      a: A,
+      b: B - 2 * A * x0,
+      c: C - B * x0 + A * x0 * x0
+    };
   }
 
   /**
@@ -828,9 +884,9 @@
       }
     }
 
-    // Stage 2.5 (Blocker 1 Fix): Connected-Component Core Darkness Pencil Removal
+    // Stage 2.5 (Blocker 1 Fix): Illustration-Safe & Row-Clustered Connected-Component Pencil Removal
     // Erases gray pencil handwriting components whose darkest core pixel (compMinNormLum) >= pencilMinCut
-    // while keeping 100% of dark printed text and anti-aliased print edges intact!
+    // while 100% protecting illustration interiors (boy/girl facial features, schoolbag details) and dark printed text!
     if (settings.removePencil !== false) {
       var fgCand = new Uint8Array(total);
       for (var ip = 0; ip < total; ip++) {
@@ -838,7 +894,22 @@
       }
       var ccPencil = labelConnectedComponents8(fgCand, w, h);
       var pencilMinCut = isGentle ? 118.0 : (isStrong ? 98.0 : 106.0);
+      var illusBoxes = [];
+      var pencilCands = [];
+
       for (var cidP = 1; cidP <= ccPencil.count; cidP++) {
+        var px0p = ccPencil.minX[cidP], px1p = ccPencil.maxX[cidP] + 1;
+        var py0p = ccPencil.minY[cidP], py1p = ccPencil.maxY[cidP] + 1;
+        var pwp = px1p - px0p, php = py1p - py0p;
+        var pArea = ccPencil.area[cidP];
+        if ((pArea >= 1200 || (pwp >= 65 && php >= 65)) && pwp < 0.75 * w && php >= 45) {
+          illusBoxes.push({
+            x0: Math.max(0, px0p - 15),
+            x1: Math.min(w, px1p + 15),
+            y0: Math.max(0, py0p - 15),
+            y1: Math.min(h, py1p + 15)
+          });
+        }
         var pp0 = ccPencil.compStart[cidP], pp1 = ccPencil.compStart[cidP + 1];
         var minNorm = 255.0;
         for (var ppi = pp0; ppi < pp1; ppi++) {
@@ -846,7 +917,37 @@
           if (pv < minNorm) minNorm = pv;
         }
         if (minNorm >= pencilMinCut) {
-          for (var ppi2 = pp0; ppi2 < pp1; ppi2++) {
+          pencilCands.push({
+            cid: cidP,
+            cx: (px0p + px1p) * 0.5,
+            cy: (py0p + py1p) * 0.5,
+            area: pArea
+          });
+        }
+      }
+
+      for (var pci = 0; pci < pencilCands.length; pci++) {
+        var pc = pencilCands[pci];
+        if (pc.cy < 0.14 * h) continue;
+        var inIllus = false;
+        for (var ibi = 0; ibi < illusBoxes.length; ibi++) {
+          var ibox = illusBoxes[ibi];
+          if (pc.cx >= ibox.x0 && pc.cx <= ibox.x1 && pc.cy >= ibox.y0 && pc.cy <= ibox.y1) {
+            inIllus = true;
+            break;
+          }
+        }
+        if (inIllus) continue;
+
+        var rowMates = 0;
+        for (var pcj = 0; pcj < pencilCands.length; pcj++) {
+          if (pencilCands[pcj].area >= 8 && Math.abs(pencilCands[pcj].cy - pc.cy) <= 18) {
+            rowMates++;
+          }
+        }
+        if (rowMates >= 5) {
+          var ppStart = ccPencil.compStart[pc.cid], ppEnd = ccPencil.compStart[pc.cid + 1];
+          for (var ppi2 = ppStart; ppi2 < ppEnd; ppi2++) {
             outLum[ccPencil.compPixels[ppi2]] = 255;
           }
         }
@@ -1172,27 +1273,69 @@
           if (holesRes.hasBigHole) {
             var bigHoles = holesRes.mask;
             var protectedBody = new Uint8Array(total);
+            var domeArchPixels = [];
 
-            // For each column x containing bigHoles, find the top y of bigHoles and protect [hyMin - 3 .. h)
             var colHoleTop = new Int32Array(w);
             colHoleTop.fill(h);
+            var minHoleTop = h;
+            var hxList = [];
+            var hyList = [];
             for (var hx = cx0b; hx < cx1b; hx++) {
               for (var hy = cy0b; hy < cy1b; hy++) {
                 if (bigHoles[hy * w + hx]) {
                   colHoleTop[hx] = hy;
+                  if (hy < minHoleTop) minHoleTop = hy;
+                  hxList.push(hx);
+                  hyList.push(hy);
                   break;
-                }
-              }
-              if (colHoleTop[hx] < h) {
-                var yhTop = Math.max(0, colHoleTop[hx] - 3);
-                for (var py2 = yhTop; py2 < cy1b; py2++) {
-                  var pIdx2 = py2 * w + hx;
-                  if (fullComp[pIdx2]) protectedBody[pIdx2] = 1;
                 }
               }
             }
 
-            // Also protect solid dark illustration patches (15x15 density >= 170 within 27px above bigHoles, e.g. solid bag handle)
+            // Fit smooth degree-2 dome curve to upper dome columns (hy <= minHoleTop + 50)
+            var domeXs = [];
+            var domeYs = [];
+            for (var di4 = 0; di4 < hxList.length; di4++) {
+              if (hyList[di4] <= minHoleTop + 50) {
+                domeXs.push(hxList[di4]);
+                domeYs.push(hyList[di4]);
+              }
+            }
+            var domePoly = fitPoly2(domeXs, domeYs, domeXs.length);
+
+            for (var di5 = 0; di5 < hxList.length; di5++) {
+              var hxCol = hxList[di5];
+              var hyCol = hyList[di5];
+              var yCut, yArch;
+              if (hyCol <= minHoleTop + 50) {
+                var yFit = domePoly.a * hxCol * hxCol + domePoly.b * hxCol + domePoly.c;
+                yCut = Math.round(Math.max(hyCol, yFit)) + 1;
+                yArch = Math.round(yFit) - 1;
+                for (var py2 = Math.max(0, yCut); py2 < cy1b; py2++) {
+                  var pIdx2 = py2 * w + hxCol;
+                  if (fullComp[pIdx2]) protectedBody[pIdx2] = 1;
+                }
+                for (var ay = Math.max(0, yArch - 1); ay <= Math.min(h - 1, yArch + 1); ay++) {
+                  var aIdx = ay * w + hxCol;
+                  protectedBody[aIdx] = 1;
+                  domeArchPixels.push(aIdx);
+                }
+              } else {
+                yCut = Math.max(0, hyCol - 3);
+                for (var py2b = yCut; py2b < cy1b; py2b++) {
+                  var pIdx2b = py2b * w + hxCol;
+                  if (fullComp[pIdx2b]) protectedBody[pIdx2b] = 1;
+                }
+              }
+            }
+            for (var pyLow = Math.min(h, minHoleTop + 45); pyLow < cy1b; pyLow++) {
+              var rLow = pyLow * w;
+              for (var pxLow = cx0b; pxLow < cx1b; pxLow++) {
+                if (fullComp[rLow + pxLow]) protectedBody[rLow + pxLow] = 1;
+              }
+            }
+
+            // Protect solid horizontal illustration handle above minHoleTop (contiguous horizontal run >= 74px with 15x15 density >= 170)
             var compIntegral = new Int32Array((w + 1) * (h + 1));
             var cStride = w + 1;
             for (var iy2 = 0; iy2 < h; iy2++) {
@@ -1206,51 +1349,82 @@
               }
             }
 
-            var solidCore = new Uint8Array(total);
-            var yBandMax = Math.min(h, Math.round(botFrame.intercept) + 115);
-            for (var sy3 = Math.max(0, cy0b); sy3 < yBandMax; sy3++) {
+            var handleCore = new Uint8Array(total);
+            var yHandleMax = Math.min(h, minHoleTop + 5);
+            for (var sy3 = Math.max(0, cy0b); sy3 < yHandleMax; sy3++) {
               var ky0 = Math.max(0, sy3 - 7), ky1 = Math.min(h, sy3 + 8);
               var ir0 = ky0 * cStride, ir1 = ky1 * cStride;
               for (var sx3 = cx0b; sx3 < cx1b; sx3++) {
                 var pos3 = sy3 * w + sx3;
                 if (!fullComp[pos3]) continue;
-                // Check if within horizontal radius 7 and vertical distance 28 above bigHoles
-                var nearHole = false;
-                var nhx0 = Math.max(cx0b, sx3 - 7), nhx1 = Math.min(cx1b - 1, sx3 + 7);
-                for (var nhx = nhx0; nhx <= nhx1; nhx++) {
-                  if (colHoleTop[nhx] <= sy3 + 28) { nearHole = true; break; }
-                }
-                if (!nearHole) continue;
                 var kx0 = Math.max(0, sx3 - 7), kx1 = Math.min(w, sx3 + 8);
                 var mass15 = compIntegral[ir1 + kx1] - compIntegral[ir0 + kx1] - compIntegral[ir1 + kx0] + compIntegral[ir0 + kx0];
-                if (mass15 >= 170) {
-                  solidCore[pos3] = 1;
-                }
+                if (mass15 >= 170) handleCore[pos3] = 1;
               }
             }
 
-            // Dilate solidCore by 11x11 (radius 5) into protectedBody
-            for (var dsy = Math.max(0, cy0b); dsy < yBandMax; dsy++) {
-              for (var dsx = cx0b; dsx < cx1b; dsx++) {
-                if (!solidCore[dsy * w + dsx]) continue;
-                var dy0 = Math.max(0, dsy - 5), dy1 = Math.min(h - 1, dsy + 5);
-                var dx0 = Math.max(0, dsx - 5), dx1 = Math.min(w - 1, dsx + 5);
-                for (var py3 = dy0; py3 <= dy1; py3++) {
-                  var pOff3 = py3 * w;
-                  for (var px3 = dx0; px3 <= dx1; px3++) {
-                    if (fullComp[pOff3 + px3]) protectedBody[pOff3 + px3] = 1;
+            var hxMinHandle = w, hxMaxHandle = -1, hyMinHandle = h;
+            for (var hy3 = Math.max(0, cy0b); hy3 < yHandleMax; hy3++) {
+              var rOff3 = hy3 * w;
+              var runS = -1;
+              for (var hx3 = cx0b; hx3 <= cx1b; hx3++) {
+                var isFg = (hx3 < cx1b) ? fullComp[rOff3 + hx3] : 0;
+                if (isFg) {
+                  if (runS < 0) runS = hx3;
+                } else if (runS >= 0) {
+                  var runLen = hx3 - runS;
+                  if (runLen >= 74) {
+                    var coreHits = 0;
+                    for (var k3 = runS; k3 < hx3; k3++) {
+                      if (handleCore[rOff3 + k3]) coreHits++;
+                    }
+                    if (coreHits >= 30) {
+                      if (runS < hxMinHandle) hxMinHandle = runS;
+                      if (hx3 - 1 > hxMaxHandle) hxMaxHandle = hx3 - 1;
+                      if (hy3 < hyMinHandle) hyMinHandle = hy3;
+                      for (var k4 = runS; k4 < hx3; k4++) {
+                        protectedBody[rOff3 + k4] = 1;
+                      }
+                    }
                   }
+                  runS = -1;
                 }
               }
             }
 
-            // Erase protruding handwritten strokes in the top band [cy0b .. botFrame.intercept + 98]
-            var maxProtrudeY = Math.min(h, Math.round(botFrame.intercept) + 98);
+            if (hxMaxHandle >= hxMinHandle) {
+              for (var hy4 = hyMinHandle; hy4 < Math.min(h, minHoleTop + 6); hy4++) {
+                var rOff4 = hy4 * w;
+                for (var hx4 = hxMinHandle; hx4 <= hxMaxHandle; hx4++) {
+                  if (fullComp[rOff4 + hx4]) protectedBody[rOff4 + hx4] = 1;
+                }
+              }
+            }
+
+            // Keep only large connected components (area >= 500) of protectedBody so severed strokes (like bottom of 課, area=13) are discarded
+            var ccProt = labelConnectedComponents8(protectedBody, w, h);
+            var cleanProtected = new Uint8Array(total);
+            for (var pid = 1; pid <= ccProt.count; pid++) {
+              if (ccProt.area[pid] >= 500) {
+                var ppS = ccProt.compStart[pid], ppE = ccProt.compStart[pid + 1];
+                for (var ppi3 = ppS; ppi3 < ppE; ppi3++) {
+                  cleanProtected[ccProt.compPixels[ppi3]] = 1;
+                }
+              }
+            }
+
+            // Erase all protruding handwritten strokes in fullComp that are not in cleanProtected
             for (var bpi3 = bp0; bpi3 < bp1; bpi3++) {
               var pIdx3 = ccBelow.compPixels[bpi3];
-              var py4 = (pIdx3 / w) | 0;
-              if (py4 < maxProtrudeY && !protectedBody[pIdx3]) {
+              if (!cleanProtected[pIdx3]) {
                 outLum[pIdx3] = 255;
+              }
+            }
+            // Restore crisp 3px upper dome contour where handwritten strokes crossed the shoulder strap
+            for (var dai = 0; dai < domeArchPixels.length; dai++) {
+              var daIdx = domeArchPixels[dai];
+              if (cleanProtected[daIdx] && outLum[daIdx] > 15) {
+                outLum[daIdx] = 15;
               }
             }
           }
@@ -1311,7 +1485,7 @@
             varY += ddy * ddy;
           }
           var corr = (varX > 1e-5 && varY > 1e-5) ? (covXY / Math.sqrt(varX * varY)) : 0;
-          if (corr <= -0.94) {
+          if (corr <= -0.91) {
             for (var si3 = sp0; si3 < sp1; si3++) {
               var spIdx3 = cc5.compPixels[si3];
               var px5 = spIdx3 % w;
@@ -1332,7 +1506,7 @@
               var rRayOff = yRay * w;
               for (var xx = Math.max(0, cxRay - 4); xx < Math.min(w, cxRay + 5); xx++) {
                 var rp = rRayOff + xx;
-                if (hRun[rp] <= 5 && vRun[rp] <= 5) {
+                if (hRun[rp] <= 7 && vRun[rp] <= 7) {
                   outLum[rp] = 255;
                 }
               }
@@ -1342,27 +1516,52 @@
       }
     }
 
+    // For multi-row checkbox grids (checkboxes.length >= 6), clear inter-row blank strips above/below each upper checklist row
+    if (checkboxes.length >= 6 && !isGentle) {
+      var gridYMin = Math.floor(0.10 * h), gridYMax = Math.floor(0.42 * h);
+      for (var icbg = 0; icbg < checkboxes.length; icbg++) {
+        var cbg = checkboxes[icbg];
+        if (cbg.by0 < gridYMin || cbg.by0 > gridYMax) continue;
+        var maxDxG = cbg.bx0 > 0.40 * w ? 155 : 185;
+        for (var dxG = 6; dxG < maxDxG; dxG++) {
+          var xG = cbg.bx1 + dxG;
+          if (xG >= rightCut) break;
+          var rTopG = Math.round(cbg.by0 - 3 - 0.026 * dxG);
+          var rBotG = Math.round(cbg.by1 + 1 - 0.026 * dxG);
+          for (var yG1 = Math.max(0, rBotG); yG1 < Math.min(h, rBotG + 42); yG1++) {
+            outLum[yG1 * w + xG] = 255;
+          }
+          for (var yG2 = Math.max(0, rTopG - 22); yG2 < Math.min(h, rTopG); yG2++) {
+            outLum[yG2 * w + xG] = 255;
+          }
+        }
+      }
+    }
+
     // Clean small residual slash fragments sitting strictly in the blank inter-row gap between checkboxes
-    // (Replaces the old hardcoded 42px rect wipe — only removes small fragments rh <= 18, rw <= 25 that do NOT overlap any checkbox text row!)
     if (checkboxes.length >= 2) {
       var remBin = new Uint8Array(total);
       for (var ir = 0; ir < total; ir++) {
         if (outLum[ir] < 225) remBin[ir] = 1;
       }
       var ccRem = labelConnectedComponents8(remBin, w, h);
-      var cbMinY = h, cbMaxY = 0;
+      var cbMinY = h, cbMaxY = 0, cbMinX = w, cbMaxX = 0;
       for (var icb = 0; icb < checkboxes.length; icb++) {
         if (checkboxes[icb].by0 < cbMinY) cbMinY = checkboxes[icb].by0;
         if (checkboxes[icb].by1 > cbMaxY) cbMaxY = checkboxes[icb].by1;
+        if (checkboxes[icb].bx0 < cbMinX) cbMinX = checkboxes[icb].bx0;
+        if (checkboxes[icb].bx1 > cbMaxX) cbMaxX = checkboxes[icb].bx1;
       }
       cbMinY -= 18;
       cbMaxY += 35;
+      var cbSpanMinX = Math.max(0, cbMinX - 45);
+      var cbSpanMaxX = Math.min(w, cbMaxX + 165);
 
       for (var cidR = 1; cidR <= ccRem.count; cidR++) {
         var rx0 = ccRem.minX[cidR], rx1 = ccRem.maxX[cidR] + 1;
         var ry0 = ccRem.minY[cidR], ry1 = ccRem.maxY[cidR] + 1;
         var rw = rx1 - rx0, rh = ry1 - ry0;
-        if (ry0 >= cbMinY && ry1 <= cbMaxY && rh <= 18 && rw <= 25) {
+        if (rx0 >= cbSpanMinX && rx1 <= cbSpanMaxX && ry0 >= cbMinY && ry1 <= cbMaxY && rh <= 18 && rw <= 25) {
           var inAnyRow = false;
           for (var icb2 = 0; icb2 < checkboxes.length; icb2++) {
             var cb2 = checkboxes[icb2];
