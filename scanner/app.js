@@ -1,14 +1,108 @@
 (function () {
   'use strict';
 
-  if (window.pdfjsLib) {
+  if (window.__scannerAppInitialized) return;
+  window.__scannerAppInitialized = true;
+
+  if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.js';
+  }
+
+  // =========================================================================
+  // Safe Fallback Guards (in case an older cached script is loaded)
+  // =========================================================================
+  function ensureDependencies() {
+    var proc = window.ScannerProcessor || window.ExamProcessor || {};
+    if (!proc.autoDetectCorners) {
+      proc.autoDetectCorners = function () {
+        return [
+          { x: 0.03, y: 0.03 },
+          { x: 0.97, y: 0.03 },
+          { x: 0.97, y: 0.97 },
+          { x: 0.03, y: 0.97 }
+        ];
+      };
+    }
+    if (!proc.rotateStrokes90CW) {
+      proc.rotateStrokes90CW = function (strokes, oldW, oldH) {
+        if (!strokes || !strokes.length || !oldW || !oldH) return strokes || [];
+        return strokes.map(function (st) {
+          if (!st) return st;
+          if (st.tool === 'brush') {
+            return {
+              tool: 'brush',
+              size: st.size || 28,
+              points: (st.points || []).map(function (pt) {
+                return { x: Math.round(oldH - pt.y), y: Math.round(pt.x) };
+              })
+            };
+          }
+          if (st.tool === 'rect' || st.tool === 'maskbar') {
+            var rx = Math.min(st.x1, st.x2);
+            var ry = Math.min(st.y1, st.y2);
+            var rw = Math.abs(st.x2 - st.x1);
+            var rh = Math.abs(st.y2 - st.y1);
+            if (st.tool === 'maskbar' && rh < 28 && rw >= rh) rh = 34;
+            return {
+              tool: 'rect',
+              size: st.size || 24,
+              x1: Math.round(oldH - (ry + rh)),
+              y1: Math.round(rx),
+              x2: Math.round(oldH - ry),
+              y2: Math.round(rx + rw)
+            };
+          }
+          if (st.tool === 'line') {
+            var dy = Math.abs(st.y2 - st.y1);
+            var dx = Math.abs(st.x2 - st.x1);
+            var x2 = (dy > dx * 3) ? st.x1 : st.x2;
+            var y2 = (dx > dy * 3) ? st.y1 : st.y2;
+            return {
+              tool: 'line',
+              size: st.size || 18,
+              x1: Math.round(oldH - st.y1),
+              y1: Math.round(st.x1),
+              x2: Math.round(oldH - y2),
+              y2: Math.round(x2)
+            };
+          }
+          return st;
+        });
+      };
+    }
+    window.ScannerProcessor = proc;
+    window.ExamProcessor = proc;
+
+    if (!window.DemoSheetGenerator || !window.DemoSheetGenerator.createDemoPage1Canvas) {
+      window.DemoSheetGenerator = {
+        createDemoPage1Canvas: function () {
+          var c = document.createElement('canvas');
+          c.width = 1000;
+          c.height = 1414;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, c.width, c.height);
+          ctx.fillStyle = '#111827';
+          ctx.font = 'bold 32px sans-serif';
+          ctx.fillText('P.3 English Grammar Quiz', 80, 140);
+          return c;
+        }
+      };
+    }
+  }
+  ensureDependencies();
+
+  // Null-safe event listener helper
+  function on(el, evt, fn, opts) {
+    if (el && typeof el.addEventListener === 'function') {
+      el.addEventListener(evt, fn, opts || false);
+    }
   }
 
   // =========================================================================
   // State
   // =========================================================================
-  var docs = [];          // Array of Document objects stored in IndexedDB
+  var docs = [];          // Array of Document objects stored in IndexedDB / memory
   var activeDoc = null;   // Currently open Document object
   var currentIndex = 0;   // Current page index inside activeDoc.pages
   var showingOrig = false;
@@ -37,8 +131,17 @@
   var renameTargetDoc = null;
   var currentPdfBlobUrl = null;
 
+  // Expose state for automated inspection
+  window.__scannerAppState = {
+    get showingOrig() { return showingOrig; },
+    get comparingOriginal() { return showingOrig; },
+    get activeDoc() { return activeDoc; },
+    get currentIndex() { return currentIndex; },
+    get docs() { return docs; }
+  };
+
   // =========================================================================
-  // IndexedDB Multi-Document Unlimited Storage
+  // IndexedDB Multi-Document Unlimited Storage (with 800ms iOS Timeout Guard)
   // =========================================================================
   var DB_NAME = 'GrokCamScannerDB_v3';
   var STORE_NAME = 'documents_store';
@@ -47,19 +150,48 @@
   function openDB() {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise(function (resolve) {
+      var settled = false;
+      function done(val) {
+        if (!settled) {
+          settled = true;
+          resolve(val);
+        }
+      }
+      var timer = setTimeout(function () {
+        done(null);
+      }, 800);
+
       if (!window.indexedDB) {
-        resolve(null);
+        clearTimeout(timer);
+        done(null);
         return;
       }
-      var req = window.indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = function (e) {
-        var db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        }
-      };
-      req.onsuccess = function (e) { resolve(e.target.result); };
-      req.onerror = function () { resolve(null); };
+      try {
+        var req = window.indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = function (e) {
+          try {
+            var db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+          } catch (err) {}
+        };
+        req.onsuccess = function (e) {
+          clearTimeout(timer);
+          done(e.target.result);
+        };
+        req.onerror = function () {
+          clearTimeout(timer);
+          done(null);
+        };
+        req.onblocked = function () {
+          clearTimeout(timer);
+          done(null);
+        };
+      } catch (e) {
+        clearTimeout(timer);
+        done(null);
+      }
     });
     return dbPromise;
   }
@@ -91,12 +223,14 @@
     return openDB().then(function (db) {
       if (!db) return;
       return new Promise(function (resolve) {
+        var timer = setTimeout(resolve, 600);
         try {
           var tx = db.transaction(STORE_NAME, 'readwrite');
           tx.objectStore(STORE_NAME).put(serializeDoc(doc));
-          tx.oncomplete = function () { resolve(); };
-          tx.onerror = function () { resolve(); };
+          tx.oncomplete = function () { clearTimeout(timer); resolve(); };
+          tx.onerror = function () { clearTimeout(timer); resolve(); };
         } catch (e) {
+          clearTimeout(timer);
           resolve();
         }
       });
@@ -107,12 +241,14 @@
     return openDB().then(function (db) {
       if (!db) return;
       return new Promise(function (resolve) {
+        var timer = setTimeout(resolve, 600);
         try {
           var tx = db.transaction(STORE_NAME, 'readwrite');
           tx.objectStore(STORE_NAME).delete(docId);
-          tx.oncomplete = function () { resolve(); };
-          tx.onerror = function () { resolve(); };
+          tx.oncomplete = function () { clearTimeout(timer); resolve(); };
+          tx.onerror = function () { clearTimeout(timer); resolve(); };
         } catch (e) {
+          clearTimeout(timer);
           resolve();
         }
       });
@@ -123,17 +259,20 @@
     return openDB().then(function (db) {
       if (!db) return [];
       return new Promise(function (resolve) {
+        var timer = setTimeout(function () { resolve([]); }, 800);
         try {
           var tx = db.transaction(STORE_NAME, 'readonly');
           var req = tx.objectStore(STORE_NAME).getAll();
           req.onsuccess = function () {
+            clearTimeout(timer);
             var list = (req.result || []).sort(function (a, b) {
               return (b.updatedAt || 0) - (a.updatedAt || 0);
             });
             resolve(list);
           };
-          req.onerror = function () { resolve([]); };
+          req.onerror = function () { clearTimeout(timer); resolve([]); };
         } catch (e) {
+          clearTimeout(timer);
           resolve([]);
         }
       });
@@ -212,7 +351,7 @@
       'screenHome', 'screenCamera', 'screenEditor',
       'docCountBadge', 'btnQuickDemo', 'docListContainer', 'homeEmptyState', 'docList',
       'btnStartCamera', 'btnImportFiles',
-      'btnCloseCamera', 'btnNativeCamFallback', 'camViewfinder', 'camVideo', 'camSimCanvas',
+      'btnCloseCamera', 'btnNativeCamFallback', 'btnCamFallbackBig', 'camViewfinder', 'camVideo', 'camSimCanvas',
       'camFlash', 'btnCamImport', 'btnShutter', 'btnCameraDone', 'camThumbImg', 'camSnapBadge', 'camSnapCount',
       'editorTopBar', 'btnBackToHome', 'btnAddMorePages', 'btnPrevPage', 'pageCounterText', 'btnNextPage', 'btnDeletePage',
       'stageArea', 'editorCanvas', 'btnToggleHeaderMask', 'btnCompareOrig',
@@ -319,7 +458,7 @@
   }
 
   function renderHomeDocList() {
-    // Filter out empty docs
+    if (!els.docCountBadge || !els.homeEmptyState || !els.docList) return;
     docs = docs.filter(function (d) { return d.pages && d.pages.length > 0; });
     els.docCountBadge.textContent = docs.length + ' 份';
 
@@ -354,7 +493,7 @@
           '<button type="button" class="doc-act-btn del" data-act="del" title="刪除">🗑️</button>' +
         '</div>';
 
-      card.addEventListener('click', function (e) {
+      on(card, 'click', function (e) {
         var btn = e.target.closest('button[data-act]');
         if (btn) {
           e.stopPropagation();
@@ -374,7 +513,6 @@
           }
           return;
         }
-        // Open document in Screen B
         hydrateDocPages(doc).then(function () {
           activeDoc = doc;
           currentIndex = 0;
@@ -394,9 +532,9 @@
 
   function openRenameModal(doc) {
     renameTargetDoc = doc;
-    els.inpRenameDoc.value = doc.title;
-    els.renameModalBackdrop.hidden = false;
-    setTimeout(function () { els.inpRenameDoc.focus(); }, 40);
+    if (els.inpRenameDoc) els.inpRenameDoc.value = doc.title;
+    if (els.renameModalBackdrop) els.renameModalBackdrop.hidden = false;
+    setTimeout(function () { if (els.inpRenameDoc) els.inpRenameDoc.focus(); }, 40);
   }
 
   // =========================================================================
@@ -414,6 +552,7 @@
   function startCameraStream() {
     stopCameraStream();
     drawSimCameraPreview();
+    if (els.btnCamFallbackBig) els.btnCamFallbackBig.hidden = false;
 
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({
@@ -425,17 +564,21 @@
         audio: false
       }).then(function (stream) {
         mediaStream = stream;
-        els.camVideo.srcObject = stream;
-        els.camVideo.style.display = 'block';
-        els.camSimCanvas.style.display = 'none';
+        if (els.camVideo) {
+          els.camVideo.srcObject = stream;
+          els.camVideo.style.display = 'block';
+        }
+        if (els.camSimCanvas) els.camSimCanvas.style.display = 'none';
+        if (els.btnCamFallbackBig) els.btnCamFallbackBig.hidden = true;
       }).catch(function () {
-        // Fallback: keep synthetic viewfinder visible and ready for instant shutter or native camera
-        els.camVideo.style.display = 'none';
-        els.camSimCanvas.style.display = 'block';
+        if (els.camVideo) els.camVideo.style.display = 'none';
+        if (els.camSimCanvas) els.camSimCanvas.style.display = 'block';
+        if (els.btnCamFallbackBig) els.btnCamFallbackBig.hidden = false;
       });
     } else {
-      els.camVideo.style.display = 'none';
-      els.camSimCanvas.style.display = 'block';
+      if (els.camVideo) els.camVideo.style.display = 'none';
+      if (els.camSimCanvas) els.camSimCanvas.style.display = 'block';
+      if (els.btnCamFallbackBig) els.btnCamFallbackBig.hidden = false;
     }
   }
 
@@ -451,7 +594,7 @@
   }
 
   function drawSimCameraPreview() {
-    if (!window.DemoSheetGenerator) return;
+    if (!window.DemoSheetGenerator || !els.camSimCanvas) return;
     var demo = window.DemoSheetGenerator.createDemoPage1Canvas();
     els.camSimCanvas.width = demo.width;
     els.camSimCanvas.height = demo.height;
@@ -459,14 +602,15 @@
   }
 
   function captureShutterFrame() {
-    // White flash feedback
-    els.camFlash.classList.add('flash');
-    setTimeout(function () {
-      els.camFlash.classList.remove('flash');
-    }, 130);
+    if (els.camFlash) {
+      els.camFlash.classList.add('flash');
+      setTimeout(function () {
+        els.camFlash.classList.remove('flash');
+      }, 130);
+    }
 
     var c = document.createElement('canvas');
-    if (mediaStream && els.camVideo.videoWidth > 0) {
+    if (mediaStream && els.camVideo && els.camVideo.videoWidth > 0) {
       var vw = els.camVideo.videoWidth;
       var vh = els.camVideo.videoHeight;
       var maxDim = 1480;
@@ -489,14 +633,16 @@
 
   function updateCameraSnapUI(latestPage) {
     var count = activeDoc && activeDoc.pages ? activeDoc.pages.length : 0;
-    els.camSnapCount.textContent = count;
-    els.camSnapBadge.textContent = count;
+    if (els.camSnapCount) els.camSnapCount.textContent = count;
+    if (els.camSnapBadge) els.camSnapBadge.textContent = count;
     var p = latestPage || (activeDoc && activeDoc.pages[count - 1]);
-    if (p && p.thumbUrl) {
-      els.camThumbImg.src = p.thumbUrl;
-      els.camThumbImg.hidden = false;
-    } else {
-      els.camThumbImg.hidden = true;
+    if (els.camThumbImg) {
+      if (p && p.thumbUrl) {
+        els.camThumbImg.src = p.thumbUrl;
+        els.camThumbImg.hidden = false;
+      } else {
+        els.camThumbImg.hidden = true;
+      }
     }
   }
 
@@ -518,9 +664,10 @@
       reprocessSinglePage(p);
     }
 
-    els.pageCounterText.textContent = '第 ' + (currentIndex + 1) + ' / ' + activeDoc.pages.length + ' 頁';
+    if (els.pageCounterText) {
+      els.pageCounterText.textContent = '第 ' + (currentIndex + 1) + ' / ' + activeDoc.pages.length + ' 頁';
+    }
 
-    // Update filter buttons active state
     var mode = p.settings.filterMode || 'cleanAnswer';
     ['fltOriginal', 'fltMagicColor', 'fltBw', 'fltCleanAnswer'].forEach(function (id) {
       var btn = els[id];
@@ -529,22 +676,26 @@
       }
     });
 
-    // Show/hide header mask pill when in cleanAnswer mode
-    els.btnToggleHeaderMask.hidden = (mode !== 'cleanAnswer') || cropModeOpen;
-    els.btnToggleHeaderMask.classList.toggle('active', !!p.settings.autoHeaderMask);
-    els.btnToggleHeaderMask.textContent = p.settings.autoHeaderMask ? '🛡️ 遮頂部名: 開' : '🛡️ 遮頂部名: 關';
+    if (els.btnToggleHeaderMask) {
+      els.btnToggleHeaderMask.hidden = (mode !== 'cleanAnswer') || cropModeOpen;
+      els.btnToggleHeaderMask.classList.toggle('active', !!p.settings.autoHeaderMask);
+      els.btnToggleHeaderMask.textContent = p.settings.autoHeaderMask ? '🛡️ 遮頂部名: 開' : '🛡️ 遮頂部名: 關';
+    }
 
-    // Draw target canvas
     var srcToShow = showingOrig ? p.beforeCanvas : p.processedCanvas;
     if (cropModeOpen) {
       srcToShow = p.originalCanvas;
     }
-    els.editorCanvas.width = srcToShow.width;
-    els.editorCanvas.height = srcToShow.height;
-    els.editorCanvas.getContext('2d').drawImage(srcToShow, 0, 0);
+    if (els.editorCanvas && srcToShow) {
+      els.editorCanvas.width = srcToShow.width;
+      els.editorCanvas.height = srcToShow.height;
+      els.editorCanvas.getContext('2d').drawImage(srcToShow, 0, 0);
+    }
 
-    els.btnCompareOrig.classList.toggle('showing-orig', showingOrig);
-    els.btnCompareOrig.textContent = showingOrig ? '👁️ 原圖顯示中' : '👁️ 按住睇原圖';
+    if (els.btnCompareOrig) {
+      els.btnCompareOrig.classList.toggle('showing-orig', showingOrig);
+      els.btnCompareOrig.textContent = showingOrig ? '👁️ 原圖顯示中' : '👁️ 按住睇原圖';
+    }
 
     if (cropModeOpen) {
       updateCropOverlayGeometry();
@@ -581,12 +732,12 @@
     if (!activeDoc || !activeDoc.pages[currentIndex]) return;
     var p = activeDoc.pages[currentIndex];
     drawModeOpen = false;
-    els.drawFloatingBar.hidden = true;
-    els.btnToggleDraw.classList.remove('active');
+    if (els.drawFloatingBar) els.drawFloatingBar.hidden = true;
+    if (els.btnToggleDraw) els.btnToggleDraw.classList.remove('active');
 
     cropModeOpen = true;
-    els.cropOverlay.hidden = false;
-    els.btnOpenCrop.classList.add('active');
+    if (els.cropOverlay) els.cropOverlay.hidden = false;
+    if (els.btnOpenCrop) els.btnOpenCrop.classList.add('active');
 
     if (p.settings.cropCorners && p.settings.cropCorners.length === 4) {
       tempCorners = p.settings.cropCorners.map(function (c) { return { x: c.x, y: c.y }; });
@@ -598,12 +749,13 @@
 
   function closeCropMode() {
     cropModeOpen = false;
-    els.cropOverlay.hidden = true;
-    els.btnOpenCrop.classList.remove('active');
+    if (els.cropOverlay) els.cropOverlay.hidden = true;
+    if (els.btnOpenCrop) els.btnOpenCrop.classList.remove('active');
     renderEditor();
   }
 
   function updateCropOverlayGeometry() {
+    if (!els.stageArea || !els.editorCanvas || !els.cropSvg || !els.cropPoly) return;
     var stageRect = els.stageArea.getBoundingClientRect();
     var canvasRect = els.editorCanvas.getBoundingClientRect();
     var offX = canvasRect.left - stageRect.left;
@@ -635,12 +787,12 @@
         e.stopPropagation();
         draggingCornerIdx = idx;
       }
-      h.addEventListener('mousedown', startDrag);
-      h.addEventListener('touchstart', startDrag, { passive: false });
+      on(h, 'mousedown', startDrag);
+      on(h, 'touchstart', startDrag, { passive: false });
     });
 
     function moveDrag(e) {
-      if (draggingCornerIdx < 0 || !cropModeOpen) return;
+      if (draggingCornerIdx < 0 || !cropModeOpen || !els.editorCanvas) return;
       e.preventDefault();
       var canvasRect = els.editorCanvas.getBoundingClientRect();
       var clientX = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
@@ -655,19 +807,19 @@
       draggingCornerIdx = -1;
     }
 
-    window.addEventListener('mousemove', moveDrag);
-    window.addEventListener('mouseup', endDrag);
-    window.addEventListener('touchmove', moveDrag, { passive: false });
-    window.addEventListener('touchend', endDrag);
+    on(window, 'mousemove', moveDrag);
+    on(window, 'mouseup', endDrag);
+    on(window, 'touchmove', moveDrag, { passive: false });
+    on(window, 'touchend', endDrag);
 
-    els.btnCropAuto.addEventListener('click', function () {
+    on(els.btnCropAuto, 'click', function () {
       if (!activeDoc || !activeDoc.pages[currentIndex]) return;
       tempCorners = window.ScannerProcessor.autoDetectCorners(activeDoc.pages[currentIndex].originalCanvas);
       updateCropOverlayGeometry();
       showToast('📐 已自動貼合試卷邊緣');
     });
 
-    els.btnCropFull.addEventListener('click', function () {
+    on(els.btnCropFull, 'click', function () {
       tempCorners = [
         { x: 0, y: 0 },
         { x: 1, y: 0 },
@@ -677,17 +829,17 @@
       updateCropOverlayGeometry();
     });
 
-    els.btnCropCancel.addEventListener('click', function () {
+    on(els.btnCropCancel, 'click', function () {
       closeCropMode();
     });
 
-    els.btnCropApply.addEventListener('click', function () {
+    on(els.btnCropApply, 'click', function () {
       if (!activeDoc || !activeDoc.pages[currentIndex]) return;
       var p = activeDoc.pages[currentIndex];
       p.settings.cropCorners = tempCorners.map(function (c) { return { x: c.x, y: c.y }; });
       cropModeOpen = false;
-      els.cropOverlay.hidden = true;
-      els.btnOpenCrop.classList.remove('active');
+      if (els.cropOverlay) els.cropOverlay.hidden = true;
+      if (els.btnOpenCrop) els.btnOpenCrop.classList.remove('active');
       reprocessSinglePage(p);
       saveDocToDB(activeDoc);
       renderEditor();
@@ -711,6 +863,7 @@
   }
 
   function bindStageEvents() {
+    if (!els.editorCanvas) return;
     var swipeStartX = 0;
     var swipeStartY = 0;
     var isSwiping = false;
@@ -718,7 +871,6 @@
     function onStart(e) {
       if (!activeDoc || !activeDoc.pages[currentIndex] || cropModeOpen) return;
       if (!drawModeOpen) {
-        // Swipe gesture tracking for page navigation
         var t = e.touches && e.touches[0] ? e.touches[0] : e;
         swipeStartX = t.clientX;
         swipeStartY = t.clientY;
@@ -797,12 +949,12 @@
       renderEditor();
     }
 
-    els.editorCanvas.addEventListener('mousedown', onStart);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
-    els.editorCanvas.addEventListener('touchstart', onStart, { passive: false });
-    els.editorCanvas.addEventListener('touchmove', onMove, { passive: false });
-    els.editorCanvas.addEventListener('touchend', onEnd);
+    on(els.editorCanvas, 'mousedown', onStart);
+    on(window, 'mousemove', onMove);
+    on(window, 'mouseup', onEnd);
+    on(els.editorCanvas, 'touchstart', onStart, { passive: false });
+    on(els.editorCanvas, 'touchmove', onMove, { passive: false });
+    on(els.editorCanvas, 'touchend', onEnd);
   }
 
   // =========================================================================
@@ -889,21 +1041,21 @@
       showToast('請先影相或匯入試卷');
       return;
     }
-    els.inpDocTitle.value = exportTargetDoc.title || '試卷';
-    els.exportSheetBackdrop.hidden = false;
+    if (els.inpDocTitle) els.inpDocTitle.value = exportTargetDoc.title || '試卷';
+    if (els.exportSheetBackdrop) els.exportSheetBackdrop.hidden = false;
   }
 
   function closeExportSheet() {
-    els.exportSheetBackdrop.hidden = true;
+    if (els.exportSheetBackdrop) els.exportSheetBackdrop.hidden = true;
   }
 
   function syncExportDocTitle() {
     if (!exportTargetDoc) return '試卷';
-    var v = (els.inpDocTitle.value || '').trim().replace(/\.pdf$/i, '');
+    var v = (els.inpDocTitle ? els.inpDocTitle.value : '').trim().replace(/\.pdf$/i, '');
     if (v && v !== exportTargetDoc.title) {
       exportTargetDoc.title = v;
       saveDocToDB(exportTargetDoc);
-      if (els.screenHome.classList.contains('active')) {
+      if (els.screenHome && els.screenHome.classList.contains('active')) {
         renderHomeDocList();
       }
     }
@@ -958,7 +1110,6 @@
       if (err && err.name === 'AbortError') return;
     }
 
-    // Fallback when browser doesn't support File Web Share: open in-screen PDF preview directly
     openInAppPdfPreview(bundles[0].blob, bundles[0].filename);
     showToast('📖 此瀏覽器未支援直接傳檔，已為你直接打開 PDF 預覽！');
   }
@@ -968,10 +1119,10 @@
       URL.revokeObjectURL(currentPdfBlobUrl);
     }
     currentPdfBlobUrl = URL.createObjectURL(blob);
-    els.pdfViewerTitle.textContent = filename;
-    els.pdfViewerFrame.src = currentPdfBlobUrl;
-    els.lnkOpenPdfNewTab.href = currentPdfBlobUrl;
-    els.pdfViewerModal.hidden = false;
+    if (els.pdfViewerTitle) els.pdfViewerTitle.textContent = filename;
+    if (els.pdfViewerFrame) els.pdfViewerFrame.src = currentPdfBlobUrl;
+    if (els.lnkOpenPdfNewTab) els.lnkOpenPdfNewTab.href = currentPdfBlobUrl;
+    if (els.pdfViewerModal) els.pdfViewerModal.hidden = false;
   }
 
   function triggerBlobDownload(blob, filename) {
@@ -988,44 +1139,56 @@
   }
 
   // =========================================================================
-  // Bind All UI Events
+  // Bind All UI Events (Null-Safe & Synchronous Before IndexedDB)
   // =========================================================================
   function bindEvents() {
     // Home Screen actions
-    els.btnStartCamera.addEventListener('click', function () {
+    on(els.btnStartCamera, 'click', function () {
       openCameraMode(true);
     });
 
-    els.btnImportFiles.addEventListener('click', function () {
-      activeDoc = null;
-      els.importFilesInput.click();
+    // Note: els.btnImportFiles, els.btnCamImport, els.btnNativeCamFallback, els.btnCamFallbackBig
+    // are native <label for="..."> elements so iOS Safari opens the file/camera picker natively!
+    // We only bind keyboard Enter/Space for accessibility (never call input.click() on label click).
+    [
+      { label: els.btnImportFiles, input: els.importFilesInput },
+      { label: els.btnCamImport, input: els.importFilesInput },
+      { label: els.btnNativeCamFallback, input: els.cameraFallbackInput },
+      { label: els.btnCamFallbackBig, input: els.cameraFallbackInput }
+    ].forEach(function (pair) {
+      on(pair.label, 'keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (pair.input) pair.input.click();
+        }
+      });
     });
 
-    els.btnQuickDemo.addEventListener('click', function () {
+    on(els.btnQuickDemo, 'click', function () {
       var doc = createNewDoc('示範試卷_P3英文');
       activeDoc = doc;
       var demoC = window.DemoSheetGenerator.createDemoPage1Canvas();
       addCanvasToActiveDoc(demoC, 'P3 英文小測');
-      saveDocToDB(doc).then(function () {
-        switchScreen('screenEditor');
-        showToast('✨ 已載入示範試卷並自動清答案！');
-      });
+      switchScreen('screenEditor');
+      showToast('✨ 已載入示範試卷並自動清答案！');
+      saveDocToDB(doc);
     });
 
-    // File inputs
-    els.cameraFallbackInput.addEventListener('change', function (e) {
-      handleImportedFiles(e.target.files, false);
+    // File inputs change handlers
+    on(els.cameraFallbackInput, 'change', function (e) {
+      var fromHome = els.screenHome && els.screenHome.classList.contains('active');
+      handleImportedFiles(e.target.files, fromHome);
       e.target.value = '';
     });
 
-    els.importFilesInput.addEventListener('change', function (e) {
-      var fromHome = els.screenHome.classList.contains('active');
+    on(els.importFilesInput, 'change', function (e) {
+      var fromHome = els.screenHome && els.screenHome.classList.contains('active');
       handleImportedFiles(e.target.files, fromHome);
       e.target.value = '';
     });
 
     // Camera Screen actions
-    els.btnCloseCamera.addEventListener('click', function () {
+    on(els.btnCloseCamera, 'click', function () {
       if (activeDoc && activeDoc.pages.length > 0) {
         switchScreen('screenEditor');
       } else {
@@ -1033,19 +1196,11 @@
       }
     });
 
-    els.btnNativeCamFallback.addEventListener('click', function () {
-      els.cameraFallbackInput.click();
-    });
-
-    els.btnCamImport.addEventListener('click', function () {
-      els.importFilesInput.click();
-    });
-
-    els.btnShutter.addEventListener('click', function () {
+    on(els.btnShutter, 'click', function () {
       captureShutterFrame();
     });
 
-    els.btnCameraDone.addEventListener('click', function () {
+    on(els.btnCameraDone, 'click', function () {
       if (!activeDoc || activeDoc.pages.length === 0) {
         captureShutterFrame();
       }
@@ -1053,33 +1208,32 @@
     });
 
     // Editor Top Bar
-    els.btnBackToHome.addEventListener('click', function () {
+    on(els.btnBackToHome, 'click', function () {
       cropModeOpen = false;
-      els.cropOverlay.hidden = true;
+      if (els.cropOverlay) els.cropOverlay.hidden = true;
       drawModeOpen = false;
-      els.drawFloatingBar.hidden = true;
-      saveDocToDB(activeDoc).then(function () {
-        switchScreen('screenHome');
-      });
+      if (els.drawFloatingBar) els.drawFloatingBar.hidden = true;
+      switchScreen('screenHome');
+      saveDocToDB(activeDoc);
     });
 
-    els.btnAddMorePages.addEventListener('click', function () {
+    on(els.btnAddMorePages, 'click', function () {
       openCameraMode(false);
     });
 
-    els.btnPrevPage.addEventListener('click', function () {
+    on(els.btnPrevPage, 'click', function () {
       if (!activeDoc || currentIndex <= 0) return;
       currentIndex--;
       renderEditor();
     });
 
-    els.btnNextPage.addEventListener('click', function () {
+    on(els.btnNextPage, 'click', function () {
       if (!activeDoc || currentIndex >= activeDoc.pages.length - 1) return;
       currentIndex++;
       renderEditor();
     });
 
-    els.btnDeletePage.addEventListener('click', function () {
+    on(els.btnDeletePage, 'click', function () {
       if (!activeDoc || !activeDoc.pages.length) return;
       activeDoc.pages.splice(currentIndex, 1);
       if (activeDoc.pages.length === 0) {
@@ -1099,7 +1253,7 @@
     });
 
     // Floating Stage Pills
-    els.btnToggleHeaderMask.addEventListener('click', function () {
+    on(els.btnToggleHeaderMask, 'click', function () {
       if (!activeDoc || !activeDoc.pages[currentIndex]) return;
       var p = activeDoc.pages[currentIndex];
       p.settings.autoHeaderMask = !p.settings.autoHeaderMask;
@@ -1109,40 +1263,54 @@
       showToast(p.settings.autoHeaderMask ? '🛡️ 已開啟遮頂部校名/姓名' : '🛡️ 已關閉遮頂部名');
     });
 
-    // Hold or Click to compare Original
-    var holdActive = false;
-    els.btnCompareOrig.addEventListener('mousedown', function () {
-      holdActive = true;
+    // Hold to compare Original (pointerdown -> show original, pointerup/pointercancel/pointerleave -> restore cleaned)
+    var pointerHoldingOrig = false;
+    function startHoldOrig(e) {
+      if (e && e.type === 'touchstart') e.preventDefault();
+      pointerHoldingOrig = true;
       showingOrig = true;
       renderEditor();
-    });
-    window.addEventListener('mouseup', function () {
-      if (holdActive) {
-        holdActive = false;
-        showingOrig = false;
-        if (els.screenEditor.classList.contains('active')) renderEditor();
+    }
+    function endHoldOrig() {
+      if (!pointerHoldingOrig && !showingOrig) return;
+      pointerHoldingOrig = false;
+      showingOrig = false;
+      if (els.screenEditor && els.screenEditor.classList.contains('active')) {
+        renderEditor();
       }
+    }
+    on(els.btnCompareOrig, 'pointerdown', startHoldOrig);
+    on(els.btnCompareOrig, 'pointerup', endHoldOrig);
+    on(els.btnCompareOrig, 'pointercancel', endHoldOrig);
+    on(els.btnCompareOrig, 'pointerleave', endHoldOrig);
+    on(els.btnCompareOrig, 'mousedown', startHoldOrig);
+    on(els.btnCompareOrig, 'touchstart', startHoldOrig, { passive: false });
+    on(els.btnCompareOrig, 'touchend', endHoldOrig);
+    on(els.btnCompareOrig, 'touchcancel', endHoldOrig);
+    on(window, 'mouseup', function () {
+      if (pointerHoldingOrig) endHoldOrig();
     });
-    els.btnCompareOrig.addEventListener('touchstart', function (e) {
-      e.preventDefault();
-      showingOrig = !showingOrig;
-      renderEditor();
-    }, { passive: false });
-    els.btnCompareOrig.addEventListener('click', function () {
-      showingOrig = !showingOrig;
-      renderEditor();
+    on(window, 'pointerup', function () {
+      if (pointerHoldingOrig) endHoldOrig();
+    });
+    on(els.btnCompareOrig, 'keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showingOrig = !showingOrig;
+        renderEditor();
+      }
     });
 
     // Bottom Strip: 4 Filters
     ['fltOriginal', 'fltMagicColor', 'fltBw', 'fltCleanAnswer'].forEach(function (id) {
-      els[id].addEventListener('click', function () {
+      on(els[id], 'click', function () {
         if (cropModeOpen) closeCropMode();
         setFilterMode(els[id].getAttribute('data-filter'));
       });
     });
 
     // Crop button
-    els.btnOpenCrop.addEventListener('click', function () {
+    on(els.btnOpenCrop, 'click', function () {
       if (cropModeOpen) {
         closeCropMode();
       } else {
@@ -1151,11 +1319,11 @@
     });
 
     // Manual Touch Draw toggle & sub-tools
-    els.btnToggleDraw.addEventListener('click', function () {
+    on(els.btnToggleDraw, 'click', function () {
       if (cropModeOpen) closeCropMode();
       drawModeOpen = !drawModeOpen;
-      els.drawFloatingBar.hidden = !drawModeOpen;
-      els.btnToggleDraw.classList.toggle('active', drawModeOpen);
+      if (els.drawFloatingBar) els.drawFloatingBar.hidden = !drawModeOpen;
+      if (els.btnToggleDraw) els.btnToggleDraw.classList.toggle('active', drawModeOpen);
       if (drawModeOpen) {
         showToast('🖌️ 請直接喺試卷上拉白框／塗改／補橫線');
       }
@@ -1165,15 +1333,15 @@
       currentTool = toolName;
       ['toolRect', 'toolBrush', 'toolLine', 'toolMaskbar'].forEach(function (id) {
         var map = { toolRect: 'rect', toolBrush: 'brush', toolLine: 'line', toolMaskbar: 'maskbar' };
-        els[id].classList.toggle('active', map[id] === toolName);
+        if (els[id]) els[id].classList.toggle('active', map[id] === toolName);
       });
     }
-    els.toolRect.addEventListener('click', function () { selectDrawTool('rect'); });
-    els.toolBrush.addEventListener('click', function () { selectDrawTool('brush'); });
-    els.toolLine.addEventListener('click', function () { selectDrawTool('line'); });
-    els.toolMaskbar.addEventListener('click', function () { selectDrawTool('maskbar'); });
+    on(els.toolRect, 'click', function () { selectDrawTool('rect'); });
+    on(els.toolBrush, 'click', function () { selectDrawTool('brush'); });
+    on(els.toolLine, 'click', function () { selectDrawTool('line'); });
+    on(els.toolMaskbar, 'click', function () { selectDrawTool('maskbar'); });
 
-    els.btnUndoStroke.addEventListener('click', function () {
+    on(els.btnUndoStroke, 'click', function () {
       if (!activeDoc || !activeDoc.pages[currentIndex]) return;
       var p = activeDoc.pages[currentIndex];
       if (!p.strokes.length) return;
@@ -1184,11 +1352,16 @@
       showToast('↩️ 已復原上一步');
     });
 
-    // Rotate button
-    els.btnRotate.addEventListener('click', function () {
+    // Rotate 90° CW button (also rotates existing strokes 90° CW so manual edits stay aligned!)
+    on(els.btnRotate, 'click', function () {
       if (!activeDoc || !activeDoc.pages[currentIndex]) return;
       if (cropModeOpen) closeCropMode();
       var p = activeDoc.pages[currentIndex];
+      var oldW = (p.processedCanvas && p.processedCanvas.width) || (p.beforeCanvas && p.beforeCanvas.width) || (p.originalCanvas && p.originalCanvas.width) || 0;
+      var oldH = (p.processedCanvas && p.processedCanvas.height) || (p.beforeCanvas && p.beforeCanvas.height) || (p.originalCanvas && p.originalCanvas.height) || 0;
+      if (p.strokes && p.strokes.length > 0 && oldW > 0 && oldH > 0) {
+        p.strokes = window.ScannerProcessor.rotateStrokes90CW(p.strokes, oldW, oldH);
+      }
       p.settings.rotation = ((p.settings.rotation || 0) + 90) % 360;
       reprocessSinglePage(p);
       saveDocToDB(activeDoc);
@@ -1196,36 +1369,36 @@
     });
 
     // Export Sheet open/close
-    els.btnOpenExportSheet.addEventListener('click', function () {
+    on(els.btnOpenExportSheet, 'click', function () {
       openExportSheetForDoc(activeDoc);
     });
-    els.btnCloseExportSheet.addEventListener('click', closeExportSheet);
-    els.exportSheetBackdrop.addEventListener('click', function (e) {
+    on(els.btnCloseExportSheet, 'click', closeExportSheet);
+    on(els.exportSheetBackdrop, 'click', function (e) {
       if (e.target === els.exportSheetBackdrop) closeExportSheet();
     });
 
     // Version Tabs inside Export Sheet
     ['verCleaned', 'verOriginal', 'verBoth'].forEach(function (id) {
-      els[id].addEventListener('click', function () {
+      on(els[id], 'click', function () {
         exportVersion = els[id].getAttribute('data-ver');
         ['verCleaned', 'verOriginal', 'verBoth'].forEach(function (other) {
-          els[other].classList.toggle('active', other === id);
+          if (els[other]) els[other].classList.toggle('active', other === id);
         });
       });
     });
 
     // 3 Big Export Actions
-    els.btnSharePdf.addEventListener('click', function () {
+    on(els.btnSharePdf, 'click', function () {
       handleWebSharePdf();
     });
 
-    els.btnPreviewPdf.addEventListener('click', function () {
+    on(els.btnPreviewPdf, 'click', function () {
       var bundles = buildPdfBundlesForTarget(exportVersion);
       if (!bundles.length) return;
       openInAppPdfPreview(bundles[0].blob, bundles[0].filename);
     });
 
-    els.btnDownloadPdfFile.addEventListener('click', function () {
+    on(els.btnDownloadPdfFile, 'click', function () {
       var bundles = buildPdfBundlesForTarget(exportVersion);
       if (!bundles.length) return;
       bundles.forEach(function (b, idx) {
@@ -1237,13 +1410,13 @@
     });
 
     // In-App PDF Viewer actions
-    els.btnClosePdfViewer.addEventListener('click', function () {
-      els.pdfViewerModal.hidden = true;
+    on(els.btnClosePdfViewer, 'click', function () {
+      if (els.pdfViewerModal) els.pdfViewerModal.hidden = true;
     });
 
-    els.btnPrintFromViewer.addEventListener('click', function () {
+    on(els.btnPrintFromViewer, 'click', function () {
       var doc = exportTargetDoc || activeDoc;
-      if (!doc || !doc.pages.length) return;
+      if (!doc || !doc.pages.length || !els.printContainer) return;
       els.printContainer.innerHTML = '';
       doc.pages.forEach(function (p) {
         var div = document.createElement('div');
@@ -1258,11 +1431,11 @@
     });
 
     // Rename Modal actions
-    els.btnCancelRename.addEventListener('click', function () {
-      els.renameModalBackdrop.hidden = true;
+    on(els.btnCancelRename, 'click', function () {
+      if (els.renameModalBackdrop) els.renameModalBackdrop.hidden = true;
     });
-    els.btnConfirmRename.addEventListener('click', function () {
-      if (renameTargetDoc) {
+    on(els.btnConfirmRename, 'click', function () {
+      if (renameTargetDoc && els.inpRenameDoc) {
         var v = els.inpRenameDoc.value.trim();
         if (v) {
           renameTargetDoc.title = v;
@@ -1271,22 +1444,33 @@
           showToast('✅ 已更新試卷名稱');
         }
       }
-      els.renameModalBackdrop.hidden = true;
+      if (els.renameModalBackdrop) els.renameModalBackdrop.hidden = true;
     });
   }
 
   // =========================================================================
-  // Init
+  // Init (ReadyState-Safe + Synchronous Event Binding Before IndexedDB)
   // =========================================================================
-  window.addEventListener('DOMContentLoaded', function () {
+  function initApp() {
     initElements();
     bindEvents();
     bindStageEvents();
     bindCropEvents();
+    renderHomeDocList();
 
     loadAllDocsFromDB().then(function (savedDocs) {
-      docs = savedDocs || [];
-      renderHomeDocList();
+      if (savedDocs && savedDocs.length > 0 && docs.length === 0) {
+        docs = savedDocs;
+        if (els.screenHome && els.screenHome.classList.contains('active')) {
+          renderHomeDocList();
+        }
+      }
     });
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp, { once: true });
+  } else {
+    initApp();
+  }
 })();

@@ -17,10 +17,27 @@ html, body {
   touch-action: manipulation;
 }
 
-button, input {
+button, input, label[role="button"] {
   font: inherit;
   border: none;
   outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, label[role="button"] {
+  cursor: pointer;
+}
+
+.sr-file-input {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
+  z-index: -1;
 }
 
 [hidden] {
@@ -75,30 +92,34 @@ button, input {
 .top-bar {
   height: 48px;
   min-height: 48px;
-  padding: 0 14px;
+  padding: 0 12px;
   background: #0f172a;
   border-bottom: 1px solid #1e293b;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
 }
 
 .top-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .top-logo {
   width: 26px;
   height: 26px;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .top-title {
-  font-size: 17px;
+  font-size: 16.5px;
   font-weight: 800;
   color: #f8fafc;
+  white-space: nowrap;
 }
 
 .top-badge {
@@ -108,6 +129,8 @@ button, input {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .top-mini-btn {
@@ -118,7 +141,8 @@ button, input {
   border-radius: 99px;
   font-size: 12.5px;
   font-weight: 700;
-  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .doc-list-area {
@@ -235,7 +259,6 @@ button, input {
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
 }
 
 .doc-act-btn.share {
@@ -264,11 +287,11 @@ button, input {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 15.5px;
   font-weight: 800;
   color: #fff;
-  cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  text-decoration: none;
 }
 
 .cta-camera {
@@ -280,7 +303,7 @@ button, input {
 }
 
 .cta-ico {
-  font-size: 21px;
+  font-size: 20px;
 }
 
 /* ========================================================================= */
@@ -304,7 +327,9 @@ button, input {
   border-radius: 99px;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cam-title {
@@ -344,6 +369,23 @@ button, input {
   pointer-events: none;
 }
 
+.cam-fallback-cta {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  background: rgba(16, 185, 129, 0.94);
+  color: #fff;
+  border: 1.5px solid #a7f3d0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
 .cam-flash {
   position: absolute;
   inset: 0;
@@ -361,7 +403,7 @@ button, input {
   height: 9%;
   min-height: 64px;
   max-height: 76px;
-  padding: 0 14px;
+  padding: 0 12px;
   background: #000;
   display: flex;
   align-items: center;
@@ -371,14 +413,13 @@ button, input {
 .cam-side-btn {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  padding: 8px 12px;
+  padding: 8px 11px;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 5px;
-  cursor: pointer;
 }
 
 .shutter-btn {
@@ -390,7 +431,6 @@ button, input {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
 .shutter-btn:active .shutter-inner {
@@ -409,14 +449,13 @@ button, input {
   position: relative;
   background: #10b981;
   color: #fff;
-  padding: 9px 12px;
+  padding: 9px 11px;
   border-radius: 12px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 800;
   display: flex;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
+  gap: 5px;
 }
 
 .cam-thumb-img {
@@ -464,7 +503,6 @@ button, input {
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 700;
-  cursor: pointer;
   white-space: nowrap;
 }
 
@@ -487,7 +525,6 @@ button, input {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 800;
-  cursor: pointer;
 }
 
 .page-counter {
@@ -533,7 +570,6 @@ button, input {
   border-radius: 99px;
   font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
   backdrop-filter: blur(4px);
 }
 
@@ -583,7 +619,6 @@ button, input {
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .draw-sub-btn.active {
@@ -649,7 +684,6 @@ button, input {
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
 }
 
 .crop-act-btn.confirm {
@@ -694,7 +728,6 @@ button, input {
   justify-content: center;
   gap: 2px;
   padding: 2px 1px;
-  cursor: pointer;
 }
 
 .strip-btn.active {
@@ -727,7 +760,6 @@ button, input {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  cursor: pointer;
   box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
 }
 
@@ -784,7 +816,7 @@ button, input {
   color: #f8fafc;
   font-size: 15px;
   font-weight: 800;
-  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .version-tabs {
@@ -802,7 +834,6 @@ button, input {
   font-size: 12px;
   font-weight: 800;
   text-align: center;
-  cursor: pointer;
 }
 
 .ver-tab.active {
@@ -824,7 +855,6 @@ button, input {
   font-size: 14.5px;
   font-weight: 800;
   text-align: center;
-  cursor: pointer;
 }
 
 .share-primary {
@@ -903,6 +933,78 @@ button, input {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Ultra-Small Screens (320x568 iPhone SE 1st Gen) Zero-Overflow Adaptation */
+@media (max-width: 359px) {
+  .top-bar {
+    padding: 0 8px;
+  }
+  .top-title {
+    font-size: 14.5px;
+  }
+  .top-mini-btn {
+    padding: 4px 8px;
+    font-size: 11.5px;
+  }
+  .cta-giant {
+    font-size: 13.5px;
+    gap: 5px;
+  }
+  .editor-top-bar {
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .nav-left, .nav-right, .nav-center {
+    gap: 2px;
+  }
+  .nav-pill {
+    padding: 4px 5px;
+    font-size: 11px;
+  }
+  .page-arrow {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+  .page-counter {
+    font-size: 11.5px;
+  }
+  .editor-bottom-dock {
+    height: 102px;
+    min-height: 102px;
+    max-height: 102px;
+    padding: 3px 4px 5px;
+  }
+  .filter-tool-strip {
+    height: 48px;
+    gap: 2px;
+  }
+  .strip-btn {
+    height: 44px;
+  }
+  .export-main-btn {
+    height: 40px;
+    font-size: 14.5px;
+  }
+  .filter-tool-strip {
+    gap: 2px;
+  }
+  .s-txt {
+    font-size: 9px;
+    letter-spacing: -0.4px;
+  }
+  .crop-act-btn {
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+  .draw-sub-btn {
+    padding: 5px 6px;
+    font-size: 11px;
+  }
 }
 
 /* Print Only */
