@@ -3,4 +3,5 @@
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
 | 2026-10-24 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-02 | 完成 CamScanner 式 100% 極簡全屏重做（PR #1 已合入 `main` `3539828`）。 | 已完成 |
-| 2026-10-24 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-03 | 完成 iOS Safari / GitHub Pages 緊急修復：(1) 所有 CSS/JS 加上 `?v=3.1` 防舊 Cache + `window.ScannerProcessor`/`window.ExamProcessor` 雙別名保底；(2) 移除 `<input type="file">` 嘅 `hidden` 屬性改用 `.sr-file-input`，並將匯入相簿/PDF 及原生相機按鈕改為原生 `<label for="...">`（新增取景窗大掣 `📷 直接開啟手機相機拍照`），100% 不會被 iOS Safari 攔截；(3) `bindEvents()` 於 IndexedDB 前同步完成，並為 IndexedDB 加入 800ms timeout 防私密瀏覽/WebView 卡死；(4) 修復 QA 提出之 4 項細節：按住睇原圖放手自動還原、先手動塗改再旋轉 90° 筆觸像素級同步旋轉、320×568 頂部導航列 0px 溢出（預覽區佔比 75.70%）、`style.css` 與 `styles.css` 100% 同步。 | 請驗收 PR 並合入 `main` |
+| 2026-10-24 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-03 | 完成 iOS Safari / GitHub Pages 緊急修復（PR #2 已合入 `main` `ec8233e`）。 | 已完成 |
+| 2026-10-25 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-04 | 完成「自動清答案」與「高清黑白」影像演算法徹底重構（`?v=3.2`）：(1) 自動偵測並提取截圖內白紙試卷區域（`detectPaperSubrectFromLum`），預設關閉盲目切頂部 9% 嘅 `autoHeaderMask`；(2) 局部自適應背景估算 + 對比度增強 + 2×2 筆畫連通加深，100% 保護頂部印刷題目與書包/人物插圖；(3) 結構化識別 12 個方格 `□` 清除手寫 `✓` 並重繪空心方格、識別傾斜填充橫線清除「學生手冊」「中國語文」並重繪橫線與對話框外框、清除對話框下大字「(課本)課本^」並修復書包左肩弧線、利用連通域線性回歸清除老師批改斜線 `/` 及右上角手寫班別姓名；(4) 新增「🧹 力度：輕柔 / 標準 / 強力」三段切換 UI（預覽區佔比 82.2% ≥ 75%，0px 溢出）。 | 請驗收 PR 並合入 `main` |

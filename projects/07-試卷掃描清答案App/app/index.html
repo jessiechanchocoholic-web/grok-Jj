@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="掃描清答案" />
-  <link rel="manifest" href="./manifest.json?v=3.1" />
-  <link rel="icon" type="image/svg+xml" href="./icon.svg?v=3.1" />
-  <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.1" />
-  <link rel="stylesheet" href="./style.css?v=3.1" />
+  <link rel="manifest" href="./manifest.json?v=3.2" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg?v=3.2" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.2" />
+  <link rel="stylesheet" href="./style.css?v=3.2" />
 </head>
 <body>
   <!-- Off-screen Native File Inputs (NO hidden attribute so iOS Safari <label for="..."> always works) -->
@@ -30,7 +30,7 @@
   <section id="screenHome" class="app-screen active">
     <header class="top-bar">
       <div class="top-brand">
-        <img src="./icon.svg?v=3.1" alt="" class="top-logo" />
+        <img src="./icon.svg?v=3.2" alt="" class="top-logo" />
         <span class="top-title">📁 我的試卷庫</span>
         <span id="docCountBadge" class="top-badge">0 份</span>
       </div>
@@ -124,14 +124,22 @@
       <canvas id="editorCanvas"></canvas>
 
       <!-- Top-left floating mini pill: Header Name Privacy Mask toggle -->
-      <button type="button" id="btnToggleHeaderMask" class="floating-pill left-pill active">
-        🛡️ 遮頂部名: 開
+      <button type="button" id="btnToggleHeaderMask" class="floating-pill left-pill">
+        🛡️ 遮頂部名: 關
       </button>
 
       <!-- Top-right floating mini pill: Hold to view Original -->
       <button type="button" id="btnCompareOrig" class="floating-pill right-pill">
         👁️ 按住睇原圖
       </button>
+
+      <!-- Bottom-center floating pill: 3-level Smart Erase Strength (Visible when 🧹 自動清答案 is active) -->
+      <div id="eraseStrengthBar" class="erase-strength-bar" role="group" aria-label="清答案力度">
+        <span class="str-label">🧹 力度</span>
+        <button type="button" id="strGentle" class="strength-btn" data-strength="gentle">輕柔</button>
+        <button type="button" id="strStandard" class="strength-btn active" data-strength="standard">標準</button>
+        <button type="button" id="strStrong" class="strength-btn" data-strength="strong">強力</button>
+      </div>
 
       <!-- Floating Manual Touch Draw Sub-Toolbar (Hidden unless 🖌️ 手動塗改 is active) -->
       <div id="drawFloatingBar" class="draw-floating-bar" hidden>
@@ -268,11 +276,11 @@
   <!-- Print Container -->
   <div id="printContainer"></div>
 
-  <!-- Local Scripts (with ?v=3.1 cache-busting) -->
-  <script src="./vendor/pdf.min.js?v=3.1"></script>
-  <script src="./pdf-lib.js?v=3.1"></script>
-  <script src="./demo-sheet.js?v=3.1"></script>
-  <script src="./processor.js?v=3.1"></script>
-  <script src="./app.js?v=3.1"></script>
+  <!-- Local Scripts (with ?v=3.2 cache-busting) -->
+  <script src="./vendor/pdf.min.js?v=3.2"></script>
+  <script src="./pdf-lib.js?v=3.2"></script>
+  <script src="./demo-sheet.js?v=3.2"></script>
+  <script src="./processor.js?v=3.2"></script>
+  <script src="./app.js?v=3.2"></script>
 </body>
 </html>
