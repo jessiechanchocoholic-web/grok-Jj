@@ -308,14 +308,15 @@
   function defaultSettings() {
     return {
       filterMode: 'cleanAnswer', // 'original' | 'magicColor' | 'bw' | 'cleanAnswer'
+      eraseStrength: 'standard', // 'gentle' | 'standard' | 'strong'
       autoWhiten: true,
       whitenStrength: 70,
       removeColorInk: true,
       colorSensitivity: 64,
       removePencil: true,
       pencilThreshold: 146,
-      autoHeaderMask: true,
-      headerMaskRatio: 9.0,
+      autoHeaderMask: false,
+      headerMaskRatio: 6.0,
       cropPercent: 0,
       cropCorners: null,
       rotation: 0
@@ -354,7 +355,7 @@
       'btnCloseCamera', 'btnNativeCamFallback', 'btnCamFallbackBig', 'camViewfinder', 'camVideo', 'camSimCanvas',
       'camFlash', 'btnCamImport', 'btnShutter', 'btnCameraDone', 'camThumbImg', 'camSnapBadge', 'camSnapCount',
       'editorTopBar', 'btnBackToHome', 'btnAddMorePages', 'btnPrevPage', 'pageCounterText', 'btnNextPage', 'btnDeletePage',
-      'stageArea', 'editorCanvas', 'btnToggleHeaderMask', 'btnCompareOrig',
+      'stageArea', 'editorCanvas', 'btnToggleHeaderMask', 'btnCompareOrig', 'eraseStrengthBar', 'strGentle', 'strStandard', 'strStrong',
       'drawFloatingBar', 'toolRect', 'toolBrush', 'toolLine', 'toolMaskbar', 'btnUndoStroke',
       'cropOverlay', 'cropSvg', 'cropPoly', 'cropCorner0', 'cropCorner1', 'cropCorner2', 'cropCorner3',
       'btnCropAuto', 'btnCropFull', 'btnCropCancel', 'btnCropApply',
@@ -613,7 +614,7 @@
     if (mediaStream && els.camVideo && els.camVideo.videoWidth > 0) {
       var vw = els.camVideo.videoWidth;
       var vh = els.camVideo.videoHeight;
-      var maxDim = 1480;
+      var maxDim = 1800;
       var scale = Math.min(1, maxDim / Math.max(vw, vh));
       c.width = Math.round(vw * scale);
       c.height = Math.round(vh * scale);
@@ -682,6 +683,17 @@
       els.btnToggleHeaderMask.textContent = p.settings.autoHeaderMask ? '🛡️ 遮頂部名: 開' : '🛡️ 遮頂部名: 關';
     }
 
+    if (els.eraseStrengthBar) {
+      els.eraseStrengthBar.hidden = (mode !== 'cleanAnswer') || cropModeOpen || drawModeOpen;
+      var curStr = p.settings.eraseStrength || 'standard';
+      ['strGentle', 'strStandard', 'strStrong'].forEach(function (sid) {
+        var sbtn = els[sid];
+        if (sbtn) {
+          sbtn.classList.toggle('active', sbtn.getAttribute('data-strength') === curStr);
+        }
+      });
+    }
+
     var srcToShow = showingOrig ? p.beforeCanvas : p.processedCanvas;
     if (cropModeOpen) {
       srcToShow = p.originalCanvas;
@@ -723,6 +735,19 @@
     reprocessSinglePage(p);
     saveDocToDB(activeDoc);
     renderEditor();
+  }
+
+  function setEraseStrength(strength) {
+    if (!activeDoc || !activeDoc.pages[currentIndex]) return;
+    var p = activeDoc.pages[currentIndex];
+    p.settings.eraseStrength = strength || 'standard';
+    p.settings.filterMode = 'cleanAnswer';
+    showingOrig = false;
+    reprocessSinglePage(p);
+    saveDocToDB(activeDoc);
+    renderEditor();
+    var labelMap = { gentle: '輕柔', standard: '標準', strong: '強力' };
+    showToast('🧹 清答案力度：' + (labelMap[strength] || '標準'), 1400);
   }
 
   // =========================================================================
@@ -989,7 +1014,7 @@
       reader.onload = function (ev) {
         var img = new Image();
         img.onload = function () {
-          var maxDim = 1480;
+          var maxDim = 1800;
           var w = img.width;
           var h = img.height;
           if (w > maxDim || h > maxDim) {
@@ -1309,6 +1334,13 @@
       });
     });
 
+    // Smart Erase 3-Level Strength Buttons
+    ['strGentle', 'strStandard', 'strStrong'].forEach(function (sid) {
+      on(els[sid], 'click', function () {
+        setEraseStrength(els[sid].getAttribute('data-strength'));
+      });
+    });
+
     // Crop button
     on(els.btnOpenCrop, 'click', function () {
       if (cropModeOpen) {
@@ -1324,6 +1356,7 @@
       drawModeOpen = !drawModeOpen;
       if (els.drawFloatingBar) els.drawFloatingBar.hidden = !drawModeOpen;
       if (els.btnToggleDraw) els.btnToggleDraw.classList.toggle('active', drawModeOpen);
+      renderEditor();
       if (drawModeOpen) {
         showToast('🖌️ 請直接喺試卷上拉白框／塗改／補橫線');
       }
