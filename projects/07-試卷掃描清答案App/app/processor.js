@@ -334,7 +334,7 @@
       }).join(';');
     }
     return [
-      'v3.2-exact',
+      'v3.3',
       settings.filterMode || 'cleanAnswer',
       settings.eraseStrength || 'standard',
       settings.rotation || 0,
@@ -355,22 +355,52 @@
     var step = 4;
     var sw = Math.ceil(w / step);
     var sh = Math.ceil(h / step);
-    var integral = new Float64Array((sw + 1) * (sh + 1));
-    var stride = sw + 1;
+    var grid = new Float32Array(sw * sh);
 
     for (var sy = 0; sy < sh; sy++) {
       var py = Math.min(h - 1, sy * step);
-      var rowSum = 0;
       var srcRow = py * w;
-      var intRow = (sy + 1) * stride;
-      var prevIntRow = sy * stride;
+      var gRow = sy * sw;
       for (var sx = 0; sx < sw; sx++) {
         var px = Math.min(w - 1, sx * step);
         var v1 = lumArr[srcRow + px];
         var v2 = lumArr[srcRow + Math.min(w - 1, px + 2)];
-        var val = v1 > v2 ? v1 : v2;
-        rowSum += val;
-        integral[intRow + sx + 1] = integral[prevIntRow + sx + 1] + rowSum;
+        grid[gRow + sx] = v1 > v2 ? v1 : v2;
+      }
+    }
+
+    // 5x5 maximum filter (grey dilation) on subsampled grid so dark text/illustrations never pull down local paper background
+    var hDil = new Float32Array(sw * sh);
+    for (var dy = 0; dy < sh; dy++) {
+      var rOff = dy * sw;
+      for (var dx = 0; dx < sw; dx++) {
+        var maxV = 0;
+        var kx0 = dx - 2 < 0 ? 0 : dx - 2;
+        var kx1 = dx + 2 >= sw ? sw - 1 : dx + 2;
+        for (var kx = kx0; kx <= kx1; kx++) {
+          var v = grid[rOff + kx];
+          if (v > maxV) maxV = v;
+        }
+        hDil[rOff + dx] = maxV;
+      }
+    }
+
+    var integral = new Float64Array((sw + 1) * (sh + 1));
+    var stride = sw + 1;
+    for (var sy2 = 0; sy2 < sh; sy2++) {
+      var rowSum = 0;
+      var intRow = (sy2 + 1) * stride;
+      var prevIntRow = sy2 * stride;
+      var ky0 = sy2 - 2 < 0 ? 0 : sy2 - 2;
+      var ky1 = sy2 + 2 >= sh ? sh - 1 : sy2 + 2;
+      for (var sx2 = 0; sx2 < sw; sx2++) {
+        var maxV2 = 0;
+        for (var ky = ky0; ky <= ky1; ky++) {
+          var vv = hDil[ky * sw + sx2];
+          if (vv > maxV2) maxV2 = vv;
+        }
+        rowSum += maxV2;
+        integral[intRow + sx2 + 1] = integral[prevIntRow + sx2 + 1] + rowSum;
       }
     }
 
@@ -595,21 +625,143 @@
   /**
    * 六階段結構化智能清答案引擎 (100% 對齊 test_algo_v3.py 實測完美邏輯)
    */
+  /**
+   * 填充二值遮罩內部孔洞并提取面積 >= minHoleArea 嘅大封閉內部區域 (等同 scipy binary_fill_holes)
+   * 用於保護插圖（如書包外框及內部課本）而精準剝離頂部突出嘅手寫字
+   */
+  function extractLargeInteriorHoles(compMask, w, h, minHoleArea) {
+    var total = w * h;
+    var inv = new Uint8Array(total);
+    for (var i = 0; i < total; i++) {
+      if (!compMask[i]) inv[i] = 1;
+    }
+    var ccInv = labelConnectedComponents8(inv, w, h);
+    var bigHoles = new Uint8Array(total);
+    var hasBigHole = false;
+
+    for (var cid = 1; cid <= ccInv.count; cid++) {
+      var x0 = ccInv.minX[cid], x1 = ccInv.maxX[cid];
+      var y0 = ccInv.minY[cid], y1 = ccInv.maxY[cid];
+      // Touching image border => exterior background, not an interior hole
+      if (x0 === 0 || y0 === 0 || x1 === w - 1 || y1 === h - 1) continue;
+      if (ccInv.area[cid] >= minHoleArea) {
+        hasBigHole = true;
+        var p0 = ccInv.compStart[cid], p1 = ccInv.compStart[cid + 1];
+        for (var pi = p0; pi < p1; pi++) {
+          bigHoles[ccInv.compPixels[pi]] = 1;
+        }
+      }
+    }
+    return { mask: bigHoles, hasBigHole: hasBigHole };
+  }
+
+  /**
+   * 六階段通用結構化智能清答案引擎 (v3.3 Unified — 同時完美支援內置示範卷、彩色/鉛筆相片及實測小一工作紙)
+   */
   function runSmartAnswerErase(data, lumArr, colorMask, w, h, settings) {
     var strength = settings.eraseStrength || 'standard'; // 'gentle' | 'standard' | 'strong'
     var isGentle = strength === 'gentle';
     var isStrong = strength === 'strong';
+    var total = w * h;
 
-    var outLum = new Float32Array(w * h);
-    for (var i0 = 0; i0 < w * h; i0++) {
-      outLum[i0] = lumArr[i0];
+    // Step 0 (Blocker 1 Fix): Local paper background normalization via buildFastBgMap
+    // Eliminates phone shadow gradients (e.g. demo-sheet lum 155..228 -> normLum 255) while keeping white-paper scans intact
+    var bgMap = buildFastBgMap(lumArr, w, h);
+    var integral = bgMap.integral;
+    var sw = bgMap.sw;
+    var sh = bgMap.sh;
+    var stride = bgMap.stride;
+    var rad = 9;
+    var outLum = new Float32Array(total);
+
+    for (var py0 = 0; py0 < h; py0++) {
+      var rOff0 = py0 * w;
+      var sy = py0 >> 2;
+      var by0 = sy - rad < 0 ? 0 : sy - rad;
+      var by1 = sy + rad >= sh ? sh : sy + rad + 1;
+      var r0Off = by0 * stride;
+      var r1Off = by1 * stride;
+      var boxH = by1 - by0;
+
+      for (var px0 = 0; px0 < w; px0++) {
+        var sx = px0 >> 2;
+        var bx0 = sx - rad < 0 ? 0 : sx - rad;
+        var bx1 = sx + rad >= sw ? sw : sx + rad + 1;
+        var sum =
+          integral[r1Off + bx1] -
+          integral[r0Off + bx1] -
+          integral[r1Off + bx0] +
+          integral[r0Off + bx0];
+        var boxArea = boxH * (bx1 - bx0);
+        var localBg = Math.min(255, (sum / boxArea) * 1.03);
+        var lv = lumArr[rOff0 + px0];
+        outLum[rOff0 + px0] = Math.min(255, (lv * 255) / Math.max(40, localBg));
+      }
     }
 
-    // Stage 1: Paper bounds & outer margin cleanup
-    var leftCut = Math.floor((isGentle ? 0.032 : 0.048) * w);
-    var topCut = Math.floor((isGentle ? 0.042 : 0.058) * h);
-    var rightCut = Math.floor((isGentle ? 0.885 : (isStrong ? 0.858 : 0.863)) * w);
-    var botCut = Math.floor((isGentle ? 0.955 : 0.925) * h);
+    // Stage 1 (Blocker 3 Fix): Adaptive Paper Margin & Overlapping Sheet Corridor Detection
+    // Default margins preserve 97.5% width so centered worksheets (like demo-sheet) never lose right-side text or borders
+    var leftCut = Math.floor((isGentle ? 0.024 : 0.032) * w);
+    var topCut = Math.floor((isGentle ? 0.025 : 0.032) * h);
+    var botCut = Math.floor((isGentle ? 0.972 : 0.962) * h);
+    var rightCut = Math.floor(0.975 * w);
+
+    // Detect if right side has an overlapping second sheet / slanted margin handwriting separated by a >=20px blank vertical corridor
+    var corrY0 = Math.floor(0.05 * h);
+    var corrY1 = Math.floor(0.90 * h);
+    var colCounts = new Float32Array(w);
+    for (var cy = corrY0; cy < corrY1; cy++) {
+      var cRow = cy * w;
+      for (var cx = 0; cx < w; cx++) {
+        if (outLum[cRow + cx] < 185) colCounts[cx]++;
+      }
+    }
+    var smooth7 = new Float32Array(w);
+    for (var sx1 = 0; sx1 < w; sx1++) {
+      var sAcc = 0;
+      for (var k1 = -3; k1 <= 3; k1++) {
+        var idx1 = Math.max(0, Math.min(w - 1, sx1 + k1));
+        sAcc += colCounts[idx1];
+      }
+      smooth7[sx1] = sAcc / 7.0;
+    }
+    var runStart = -1;
+    var scanX0 = Math.floor(0.83 * w);
+    var scanX1 = Math.floor(0.95 * w);
+    for (var rx = scanX0; rx < scanX1; rx++) {
+      if (smooth7[rx] <= 3.0) {
+        if (runStart < 0) runStart = rx;
+        if (rx - runStart + 1 >= 20) {
+          var maxRightClutter = 0;
+          for (var rx2 = rx + 1; rx2 < w; rx2++) {
+            if (smooth7[rx2] > maxRightClutter) maxRightClutter = smooth7[rx2];
+          }
+          if (maxRightClutter >= 40.0) {
+            rightCut = runStart + 2;
+            break;
+          }
+        }
+      } else {
+        runStart = -1;
+      }
+    }
+
+    // Check top strip [0.025h..0.058h]: if no horizontal printed school header exists (< 1.5% dark pixels), expand margin cut
+    var tbY0 = Math.floor(0.025 * h);
+    var tbY1 = Math.floor(0.058 * h);
+    var tbDark = 0;
+    var tbTotal = Math.max(1, (tbY1 - tbY0) * Math.max(1, rightCut - leftCut));
+    for (var ty = tbY0; ty < tbY1; ty++) {
+      var tRow = ty * w;
+      for (var tx = leftCut; tx < rightCut; tx++) {
+        if (outLum[tRow + tx] < 180) tbDark++;
+      }
+    }
+    if (tbDark < 0.015 * tbTotal) {
+      topCut = Math.floor((isGentle ? 0.042 : 0.058) * h);
+      leftCut = Math.max(leftCut, Math.floor((isGentle ? 0.032 : 0.048) * w));
+      botCut = Math.min(botCut, Math.floor((isGentle ? 0.955 : 0.925) * h));
+    }
 
     for (var y1 = 0; y1 < h; y1++) {
       var rOff1 = y1 * w;
@@ -620,16 +772,90 @@
       }
     }
 
-    // Stage 2: Color Ink Removal (Red/Blue Pen, Highlighter)
-    if (colorMask) {
-      for (var cp = 0; cp < w * h; cp++) {
-        if (colorMask[cp]) outLum[cp] = 255;
+    // Stage 2: Color Ink Removal (Red/Blue Pen, Highlighter) + 3x3 anti-aliased fringe dilation
+    if (settings.removeColorInk !== false) {
+      var rawColor = new Uint8Array(total);
+      for (var cp = 0; cp < total; cp++) {
+        var di2 = cp << 2;
+        var r2 = data[di2], g2 = data[di2 + 1], b2 = data[di2 + 2];
+        var maxC2 = r2 > g2 ? (r2 > b2 ? r2 : b2) : (g2 > b2 ? g2 : b2);
+        var minC2 = r2 < g2 ? (r2 < b2 ? r2 : b2) : (g2 < b2 ? g2 : b2);
+        var chr2 = maxC2 - minC2;
+        var sat2 = maxC2 > 0 ? (chr2 / maxC2) * 255.0 : 0;
+        var redDom = r2 - (g2 > b2 ? g2 : b2);
+        var blueDom = b2 - (r2 > g2 * 0.92 ? r2 : g2 * 0.92);
+        if (
+          (colorMask && colorMask[cp]) ||
+          (chr2 >= 26 && sat2 >= 37) ||
+          (redDom > 18 && r2 > 70) ||
+          (blueDom > 16 && b2 > 58) ||
+          (r2 > 180 && g2 > 160 && b2 < 140 && chr2 > 42)
+        ) {
+          rawColor[cp] = 1;
+        }
+      }
+      // 3x3 dilation to clear anti-aliased color pen fringes while protecting dark neutral print (chroma < 14 && outLum < 90)
+      for (var cy2 = 0; cy2 < h; cy2++) {
+        var cRow2 = cy2 * w;
+        var vy0 = cy2 > 0 ? cy2 - 1 : 0;
+        var vy1 = cy2 < h - 1 ? cy2 + 1 : h - 1;
+        for (var cx2 = 0; cx2 < w; cx2++) {
+          var pos2 = cRow2 + cx2;
+          var hasNeighborColor = rawColor[pos2];
+          if (!hasNeighborColor) {
+            var vx0 = cx2 > 0 ? cx2 - 1 : 0;
+            var vx1 = cx2 < w - 1 ? cx2 + 1 : w - 1;
+            for (var ny2 = vy0; ny2 <= vy1 && !hasNeighborColor; ny2++) {
+              var nRow2 = ny2 * w;
+              for (var nx2 = vx0; nx2 <= vx1; nx2++) {
+                if (rawColor[nRow2 + nx2]) {
+                  hasNeighborColor = 1;
+                  break;
+                }
+              }
+            }
+          }
+          if (hasNeighborColor) {
+            var di3 = pos2 << 2;
+            var r3 = data[di3], g3 = data[di3 + 1], b3 = data[di3 + 2];
+            var maxC3 = r3 > g3 ? (r3 > b3 ? r3 : b3) : (g3 > b3 ? g3 : b3);
+            var minC3 = r3 < g3 ? (r3 < b3 ? r3 : b3) : (g3 < b3 ? g3 : b3);
+            if (!((maxC3 - minC3) < 14 && outLum[pos2] < 90)) {
+              outLum[pos2] = 255;
+            }
+          }
+        }
+      }
+    }
+
+    // Stage 2.5 (Blocker 1 Fix): Connected-Component Core Darkness Pencil Removal
+    // Erases gray pencil handwriting components whose darkest core pixel (compMinNormLum) >= pencilMinCut
+    // while keeping 100% of dark printed text and anti-aliased print edges intact!
+    if (settings.removePencil !== false) {
+      var fgCand = new Uint8Array(total);
+      for (var ip = 0; ip < total; ip++) {
+        if (outLum[ip] < 228) fgCand[ip] = 1;
+      }
+      var ccPencil = labelConnectedComponents8(fgCand, w, h);
+      var pencilMinCut = isGentle ? 118.0 : (isStrong ? 98.0 : 106.0);
+      for (var cidP = 1; cidP <= ccPencil.count; cidP++) {
+        var pp0 = ccPencil.compStart[cidP], pp1 = ccPencil.compStart[cidP + 1];
+        var minNorm = 255.0;
+        for (var ppi = pp0; ppi < pp1; ppi++) {
+          var pv = outLum[ccPencil.compPixels[ppi]];
+          if (pv < minNorm) minNorm = pv;
+        }
+        if (minNorm >= pencilMinCut) {
+          for (var ppi2 = pp0; ppi2 < pp1; ppi2++) {
+            outLum[ccPencil.compPixels[ppi2]] = 255;
+          }
+        }
       }
     }
 
     // Stage 3: Structural Checkbox `□` Detection & Inner Checkmark `✓` Removal
-    var bin3 = new Uint8Array(w * h);
-    for (var i3 = 0; i3 < w * h; i3++) {
+    var bin3 = new Uint8Array(total);
+    for (var i3 = 0; i3 < total; i3++) {
       if (outLum[i3] < 210) bin3[i3] = 1;
     }
     var cc3 = labelConnectedComponents8(bin3, w, h);
@@ -641,7 +867,6 @@
       var bw = x1b - x0, bh = y1b - y0;
       if (bw < 22 || bw > 42 || bh < 22 || bh > 42 || Math.abs(bw - bh) > 7) continue;
 
-      // Search r in 0..min(5, bh-3)-1 and c in 0..min(5, bw-3)-1 for the 4 outer walls
       var maxRSearch = Math.min(5, bh - 3);
       var maxCSearch = Math.min(5, bw - 3);
       var topCov = 0, botCov = 0, leftCov = 0, rightCov = 0;
@@ -653,12 +878,12 @@
       for (var r = 0; r < maxRSearch; r++) {
         var tColHits = 0, tSum = 0;
         var bColHits = 0, bSum = 0;
-        for (var cx = 0; cx < bw; cx++) {
+        for (var cx3 = 0; cx3 < bw; cx3++) {
           var tAny = 0, bAny = 0;
           for (var dr = 0; dr < 3; dr++) {
-            var tv = bin3[(y0 + r + dr) * w + (x0 + cx)];
+            var tv = bin3[(y0 + r + dr) * w + (x0 + cx3)];
             if (tv) { tAny = 1; tSum++; }
-            var bv = bin3[(y0 + bh - 3 - r + dr) * w + (x0 + cx)];
+            var bv = bin3[(y0 + bh - 3 - r + dr) * w + (x0 + cx3)];
             if (bv) { bAny = 1; bSum++; }
           }
           tColHits += tAny;
@@ -680,10 +905,10 @@
           var lAny = 0, rAny = 0;
           var rowBase = (y0 + ry) * w + x0;
           for (var dc = 0; dc < 3; dc++) {
-            var lv = bin3[rowBase + c + dc];
-            if (lv) { lAny = 1; lSum++; }
-            var rv = bin3[rowBase + bw - 3 - c + dc];
-            if (rv) { rAny = 1; rSum++; }
+            var lv2 = bin3[rowBase + c + dc];
+            if (lv2) { lAny = 1; lSum++; }
+            var rv2 = bin3[rowBase + bw - 3 - c + dc];
+            if (rv2) { rAny = 1; rSum++; }
           }
           lRowHits += lAny;
           rRowHits += rAny;
@@ -699,7 +924,6 @@
 
       if (topCov < 0.84 || botCov < 0.84 || leftCov < 0.84 || rightCov < 0.84) continue;
 
-      // Inner density [5:-5, 5:-5] and top-left density [4:11, 4:11]
       var inCnt = 0, inTot = (bh - 10) * (bw - 10);
       for (var iy = 5; iy < bh - 5; iy++) {
         var iRow = (y0 + iy) * w + x0;
@@ -719,11 +943,16 @@
       var tlD = tlCnt / 49.0;
 
       if (innerD <= 0.64 && tlD <= 0.40) {
-        var by0 = y0 + rTop;
-        var by1 = y0 + rBot + 2;
-        var bx0 = x0 + cLeft;
-        var bx1 = x0 + cRight + 2;
-        checkboxes.push({ by0: by0, by1: by1, bx0: bx0, bx1: bx1, y0: y0, y1: y1b, x0: x0, x1: x1b });
+        checkboxes.push({
+          by0: y0 + rTop,
+          by1: y0 + rBot + 2,
+          bx0: x0 + cLeft,
+          bx1: x0 + cRight + 2,
+          y0: y0,
+          y1: y1b,
+          x0: x0,
+          x1: x1b
+        });
       }
     }
 
@@ -737,7 +966,6 @@
           outLum[wRow + wx] = 255;
         }
       }
-      // Redraw crisp 3px hollow square box
       for (var ry2 = cb.by0; ry2 < cb.by1; ry2++) {
         var rRow2 = ry2 * w;
         for (var rx2 = cb.bx0; rx2 < cb.bx1; rx2++) {
@@ -748,16 +976,17 @@
       }
     }
 
-    // Stage 4: Horizontal lines (fill-in underlines & speech bubble borders)
-    var bin4 = new Uint8Array(w * h);
-    for (var i4 = 0; i4 < w * h; i4++) {
+    // Stage 4 (Blocker 2 Fix): Horizontal Fill-in Underlines vs Closed Speech-Bubble Frame Detection
+    var bin4 = new Uint8Array(total);
+    for (var i4 = 0; i4 < total; i4++) {
       if (outLum[i4] < 210) bin4[i4] = 1;
     }
     var hCand = buildHorizontalDensityMask(bin4, w, h);
     var cc4 = labelConnectedComponents8(hCand, w, h);
 
-    var frameLines = [];
+    var longLines = [];
     var underlines = [];
+    var longMinW = Math.floor(0.48 * w);
     for (var cid4 = 1; cid4 <= cc4.count; cid4++) {
       var lx0 = cc4.minX[cid4], lx1 = cc4.maxX[cid4] + 1;
       var ly0 = cc4.minY[cid4], ly1 = cc4.maxY[cid4] + 1;
@@ -774,27 +1003,73 @@
         }
         var fit = fitLine(xs, ys, nPts);
         var lineObj = { x0: lx0, x1: lx1, y0: ly0, y1: ly1, slope: fit.slope, intercept: fit.intercept };
-        if (lw >= 500) {
-          frameLines.push(lineObj);
+        if (lw >= longMinW) {
+          longLines.push(lineObj);
         } else {
           underlines.push(lineObj);
         }
       }
     }
 
-    frameLines.sort(function (a, b) { return a.y0 - b.y0; });
+    longLines.sort(function (a, b) { return a.y0 - b.y0; });
     underlines.sort(function (a, b) { return a.y0 - b.y0; });
-    var topFrame = frameLines.length >= 1 ? frameLines[0] : null;
-    var botFrame = frameLines.length >= 2 ? frameLines[frameLines.length - 1] : null;
 
+    // Distinguish a closed/semi-closed speech bubble containing fill-in underlines from ordinary section dividers / reading boxes
+    var speechBox = null;
+    for (var li = 0; li < longLines.length && !speechBox; li++) {
+      for (var lj = li + 1; lj < longLines.length; lj++) {
+        var tLine = longLines[li];
+        var bLine = longLines[lj];
+        var dyBox = bLine.y0 - tLine.y0;
+        if (Math.abs(tLine.x0 - bLine.x0) <= 25 && Math.abs(tLine.x1 - bLine.x1) <= 45 && dyBox >= 80 && dyBox <= 320) {
+          var xLeftWall = Math.max(tLine.x0, bLine.x0);
+          var yWallS = Math.round(tLine.slope * xLeftWall + tLine.intercept) + 5;
+          var yWallE = Math.round(bLine.slope * xLeftWall + bLine.intercept) - 5;
+          if (yWallE > yWallS + 30) {
+            var wallHits = 0, wallTot = yWallE - yWallS;
+            var wx0 = Math.max(0, xLeftWall - 8), wx1 = Math.min(w, xLeftWall + 12);
+            for (var wy2 = Math.max(0, yWallS); wy2 < Math.min(h, yWallE); wy2++) {
+              var wOff = wy2 * w;
+              for (var wx2 = wx0; wx2 < wx1; wx2++) {
+                if (bin4[wOff + wx2]) { wallHits++; break; }
+              }
+            }
+            var leftWallCov = wallHits / Math.max(1, wallTot);
+            var innerUls = [];
+            for (var ui = 0; ui < underlines.length; ui++) {
+              var candU = underlines[ui];
+              if (candU.y0 > tLine.y0 + 15 && candU.y1 < bLine.y1 - 5 && candU.x0 >= tLine.x0 && candU.x1 <= tLine.x1 + 20) {
+                innerUls.push(candU);
+              }
+            }
+            if (leftWallCov >= 0.75 && innerUls.length >= 1) {
+              speechBox = { topFrame: tLine, botFrame: bLine, innerUls: innerUls };
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    var topFrame = speechBox ? speechBox.topFrame : null;
+    var botFrame = speechBox ? speechBox.botFrame : null;
+
+    // Clear handwriting above each fill-in underline and redraw crisp 3px underline
     var aboveClearH = isStrong ? 62 : (isGentle ? 52 : 58);
     for (var idxU = 0; idxU < underlines.length; idxU++) {
       var u = underlines[idxU];
-      var xStart = idxU === 1 ? u.x0 - 4 : u.x0 + 2;
+      var inSpeech = false;
+      if (speechBox) {
+        for (var siu = 0; siu < speechBox.innerUls.length; siu++) {
+          if (speechBox.innerUls[siu] === u) { inSpeech = true; break; }
+        }
+      }
+      var isLastSpeechUl = inSpeech && speechBox.innerUls[speechBox.innerUls.length - 1] === u;
+      var xStart = isLastSpeechUl ? u.x0 - 4 : u.x0 + 2;
       var xEnd = Math.min(w, u.x1 - 2);
       for (var ux = Math.max(0, xStart); ux < xEnd; ux++) {
         var yl = u.slope * ux + u.intercept;
-        var yTopClear = Math.round(yl - aboveClearH);
+        var yTopClear = Math.round(yl - (inSpeech ? aboveClearH : 42));
         if (topFrame && u.y0 > topFrame.y0 && u.y0 < topFrame.y0 + 150) {
           var yf = topFrame.slope * ux + topFrame.intercept;
           yTopClear = Math.max(yTopClear, Math.round(yf + 4));
@@ -806,7 +1081,7 @@
             yTopClear = Math.max(yTopClear, Math.round(yPrev + 3));
           }
         }
-        var yBotClear = Math.round(yl + 16);
+        var yBotClear = Math.round(yl + (inSpeech ? 16 : 5));
         var yStartClamped = Math.max(0, yTopClear);
         var yEndClamped = Math.min(h, yBotClear);
         for (var uy = yStartClamped; uy < yEndClamped; uy++) {
@@ -821,63 +1096,187 @@
       }
     }
 
-    if (topFrame && botFrame) {
-      for (var fx1 = 350; fx1 < Math.min(w, 700); fx1++) {
-        var yfTop = Math.round(topFrame.slope * fx1 + topFrame.intercept);
-        for (var fy1 = Math.max(0, yfTop - 48); fy1 < Math.max(0, yfTop - 2); fy1++) {
-          outLum[fy1 * w + fx1] = 255;
-        }
-        for (var fy1b = Math.max(0, yfTop - 1); fy1b < Math.min(h, yfTop + 2); fy1b++) {
-          outLum[fy1b * w + fx1] = 10;
-        }
-      }
-      for (var fx2 = 340; fx2 < Math.min(w, 695); fx2++) {
-        var yfBot = Math.round(botFrame.slope * fx2 + botFrame.intercept);
-        for (var fy2 = Math.max(0, yfBot - 26); fy2 < Math.max(0, yfBot - 2); fy2++) {
-          outLum[fy2 * w + fx2] = 255;
-        }
-        for (var fy2b = Math.max(0, yfBot - 1); fy2b < Math.min(h, yfBot + 2); fy2b++) {
-          outLum[fy2b * w + fx2] = 10;
-        }
-      }
-      if (!isGentle) {
-        for (var fx3 = 220; fx3 < Math.min(w, 496); fx3++) {
-          var yfBot3 = Math.round(botFrame.slope * fx3 + botFrame.intercept);
-          var yEnd3 = yfBot3 + 95;
-          if (fx3 >= 376 && fx3 <= 398) {
-            yEnd3 = Math.min(yEnd3, 897);
-          }
-          for (var fy3 = Math.min(h, yfBot3 + 2); fy3 < Math.min(h, yEnd3); fy3++) {
-            outLum[fy3 * w + fx3] = 255;
-          }
-        }
-        for (var fx4 = 496; fx4 < Math.min(w, 550); fx4++) {
-          var yfBot4 = Math.round(botFrame.slope * fx4 + botFrame.intercept);
-          for (var fy4 = Math.min(h, yfBot4 + 2); fy4 < Math.min(h, 824); fy4++) {
-            outLum[fy4 * w + fx4] = 255;
-          }
-        }
-        for (var bx = 386; bx < Math.min(w, 499); bx++) {
-          var t = (bx - 386) / 112.0;
-          var yc = Math.round(900 - 38 * Math.pow(t, 0.78));
-          for (var by = Math.max(0, yc - 1); by < Math.min(h, yc + 2); by++) {
-            outLum[by * w + bx] = 15;
-          }
+    // Redraw longLines so section dividers / reading passage borders stay crisp where color pen crossed them
+    for (var lli = 0; lli < longLines.length; lli++) {
+      var ll = longLines[lli];
+      for (var llx = ll.x0; llx < ll.x1; llx++) {
+        var lly = Math.round(ll.slope * llx + ll.intercept);
+        for (var lry = Math.max(0, lly - 1); lry < Math.min(h, lly + 2); lry++) {
+          if (outLum[lry * w + llx] > 15) outLum[lry * w + llx] = 15;
         }
       }
     }
 
-    // Stage 5: Teacher grading slashes "/" in checkbox section and across page
-    var bin5 = new Uint8Array(w * h);
-    for (var i5 = 0; i5 < w * h; i5++) {
+    // Speech-box border slash & below-box handwritten annotation cleanup via Connected Components & Interior Hole Envelope
+    // (ZERO hardcoded coordinates, ZERO fake drawn arcs!)
+    if (speechBox && !isGentle) {
+      var bxMin = Math.max(topFrame.x0, botFrame.x0);
+      var bxMax = Math.min(topFrame.x1, botFrame.x1);
+      var firstUl = speechBox.innerUls[0];
+
+      // 1) Clear teacher slash crossing topFrame & botFrame within the underline span [firstUl.x0 .. bxMax]
+      for (var fx = firstUl.x0; fx < Math.min(w, bxMax); fx++) {
+        var yfTop = Math.round(topFrame.slope * fx + topFrame.intercept);
+        for (var fy1 = Math.max(0, yfTop - 48); fy1 < Math.max(0, yfTop - 2); fy1++) {
+          outLum[fy1 * w + fx] = 255;
+        }
+        for (var fy1b = Math.max(0, yfTop - 1); fy1b < Math.min(h, yfTop + 2); fy1b++) {
+          outLum[fy1b * w + fx] = 10;
+        }
+        var yfBot = Math.round(botFrame.slope * fx + botFrame.intercept);
+        for (var fy2 = Math.max(0, yfBot - 26); fy2 < Math.max(0, yfBot - 2); fy2++) {
+          outLum[fy2 * w + fx] = 255;
+        }
+        for (var fy2b = Math.max(0, yfBot - 1); fy2b < Math.min(h, yfBot + 2); fy2b++) {
+          outLum[fy2b * w + fx] = 10;
+        }
+      }
+
+      // 2) Temporarily sever botFrame to isolate components below the speech bubble
+      var binBelow = new Uint8Array(total);
+      for (var ib = 0; ib < total; ib++) {
+        if (outLum[ib] < 215) binBelow[ib] = 1;
+      }
+      for (var sbx = bxMin; sbx < Math.min(w, bxMax); sbx++) {
+        var syf = Math.round(botFrame.slope * sbx + botFrame.intercept);
+        for (var sby = Math.max(0, syf - 3); sby < Math.min(h, syf + 4); sby++) {
+          binBelow[sby * w + sbx] = 0;
+        }
+      }
+
+      var ccBelow = labelConnectedComponents8(binBelow, w, h);
+      for (var cidB = 1; cidB <= ccBelow.count; cidB++) {
+        var cx0b = ccBelow.minX[cidB], cx1b = ccBelow.maxX[cidB] + 1;
+        var cy0b = ccBelow.minY[cidB], cy1b = ccBelow.maxY[cidB] + 1;
+        var cwb = cx1b - cx0b, chb = cy1b - cy0b;
+        if (cx1b <= bxMin + 80 || cx0b >= bxMax) continue;
+        var yfAtCx = Math.round(botFrame.slope * ((cx0b + cx1b) * 0.5) + botFrame.intercept);
+        if (cy1b <= yfAtCx + 2 || cy0b >= yfAtCx + 95) continue;
+
+        var compArea = ccBelow.area[cidB];
+        var bp0 = ccBelow.compStart[cidB], bp1 = ccBelow.compStart[cidB + 1];
+
+        if (cwb < 150 && chb < 120) {
+          // Disconnected handwritten annotation below speech box (e.g. "(課", ")", "課" top)
+          for (var bpi = bp0; bpi < bp1; bpi++) {
+            outLum[ccBelow.compPixels[bpi]] = 255;
+          }
+        } else if (compArea >= 8000) {
+          // Large illustration component (e.g. schoolbag): protect its closed interior hole envelope & solid handle,
+          // and erase only handwritten strokes protruding above the outer contour!
+          var fullComp = new Uint8Array(total);
+          for (var bpi2 = bp0; bpi2 < bp1; bpi2++) {
+            fullComp[ccBelow.compPixels[bpi2]] = 1;
+          }
+          var holesRes = extractLargeInteriorHoles(fullComp, w, h, 5000);
+          if (holesRes.hasBigHole) {
+            var bigHoles = holesRes.mask;
+            var protectedBody = new Uint8Array(total);
+
+            // For each column x containing bigHoles, find the top y of bigHoles and protect [hyMin - 3 .. h)
+            var colHoleTop = new Int32Array(w);
+            colHoleTop.fill(h);
+            for (var hx = cx0b; hx < cx1b; hx++) {
+              for (var hy = cy0b; hy < cy1b; hy++) {
+                if (bigHoles[hy * w + hx]) {
+                  colHoleTop[hx] = hy;
+                  break;
+                }
+              }
+              if (colHoleTop[hx] < h) {
+                var yhTop = Math.max(0, colHoleTop[hx] - 3);
+                for (var py2 = yhTop; py2 < cy1b; py2++) {
+                  var pIdx2 = py2 * w + hx;
+                  if (fullComp[pIdx2]) protectedBody[pIdx2] = 1;
+                }
+              }
+            }
+
+            // Also protect solid dark illustration patches (15x15 density >= 170 within 27px above bigHoles, e.g. solid bag handle)
+            var compIntegral = new Int32Array((w + 1) * (h + 1));
+            var cStride = w + 1;
+            for (var iy2 = 0; iy2 < h; iy2++) {
+              var rSum = 0;
+              var iRow2 = (iy2 + 1) * cStride;
+              var pRow2 = iy2 * cStride;
+              var fRow2 = iy2 * w;
+              for (var ix2 = 0; ix2 < w; ix2++) {
+                rSum += fullComp[fRow2 + ix2];
+                compIntegral[iRow2 + ix2 + 1] = compIntegral[pRow2 + ix2 + 1] + rSum;
+              }
+            }
+
+            var solidCore = new Uint8Array(total);
+            var yBandMax = Math.min(h, Math.round(botFrame.intercept) + 115);
+            for (var sy3 = Math.max(0, cy0b); sy3 < yBandMax; sy3++) {
+              var ky0 = Math.max(0, sy3 - 7), ky1 = Math.min(h, sy3 + 8);
+              var ir0 = ky0 * cStride, ir1 = ky1 * cStride;
+              for (var sx3 = cx0b; sx3 < cx1b; sx3++) {
+                var pos3 = sy3 * w + sx3;
+                if (!fullComp[pos3]) continue;
+                // Check if within horizontal radius 7 and vertical distance 28 above bigHoles
+                var nearHole = false;
+                var nhx0 = Math.max(cx0b, sx3 - 7), nhx1 = Math.min(cx1b - 1, sx3 + 7);
+                for (var nhx = nhx0; nhx <= nhx1; nhx++) {
+                  if (colHoleTop[nhx] <= sy3 + 28) { nearHole = true; break; }
+                }
+                if (!nearHole) continue;
+                var kx0 = Math.max(0, sx3 - 7), kx1 = Math.min(w, sx3 + 8);
+                var mass15 = compIntegral[ir1 + kx1] - compIntegral[ir0 + kx1] - compIntegral[ir1 + kx0] + compIntegral[ir0 + kx0];
+                if (mass15 >= 170) {
+                  solidCore[pos3] = 1;
+                }
+              }
+            }
+
+            // Dilate solidCore by 11x11 (radius 5) into protectedBody
+            for (var dsy = Math.max(0, cy0b); dsy < yBandMax; dsy++) {
+              for (var dsx = cx0b; dsx < cx1b; dsx++) {
+                if (!solidCore[dsy * w + dsx]) continue;
+                var dy0 = Math.max(0, dsy - 5), dy1 = Math.min(h - 1, dsy + 5);
+                var dx0 = Math.max(0, dsx - 5), dx1 = Math.min(w - 1, dsx + 5);
+                for (var py3 = dy0; py3 <= dy1; py3++) {
+                  var pOff3 = py3 * w;
+                  for (var px3 = dx0; px3 <= dx1; px3++) {
+                    if (fullComp[pOff3 + px3]) protectedBody[pOff3 + px3] = 1;
+                  }
+                }
+              }
+            }
+
+            // Erase protruding handwritten strokes in the top band [cy0b .. botFrame.intercept + 98]
+            var maxProtrudeY = Math.min(h, Math.round(botFrame.intercept) + 98);
+            for (var bpi3 = bp0; bpi3 < bp1; bpi3++) {
+              var pIdx3 = ccBelow.compPixels[bpi3];
+              var py4 = (pIdx3 / w) | 0;
+              if (py4 < maxProtrudeY && !protectedBody[pIdx3]) {
+                outLum[pIdx3] = 255;
+              }
+            }
+          }
+        }
+      }
+
+      // Redraw crisp botFrame
+      for (var rbx = botFrame.x0; rbx < botFrame.x1; rbx++) {
+        var rby = Math.round(botFrame.slope * rbx + botFrame.intercept);
+        for (var rby2 = Math.max(0, rby - 1); rby2 < Math.min(h, rby + 2); rby2++) {
+          outLum[rby2 * w + rbx] = 10;
+        }
+      }
+    }
+
+    // Stage 5: Teacher grading slashes "/" across page
+    var bin5 = new Uint8Array(total);
+    for (var i5 = 0; i5 < total; i5++) {
       if (outLum[i5] < 215) bin5[i5] = 1;
     }
     var runs5 = computeRunLengths(bin5, w, h);
     var hRun = runs5.hRun;
     var vRun = runs5.vRun;
 
-    var diagCand = new Uint8Array(w * h);
-    for (var p5 = 0; p5 < w * h; p5++) {
+    var diagCand = new Uint8Array(total);
+    for (var p5 = 0; p5 < total; p5++) {
       if (bin5[p5] && hRun[p5] <= 8 && vRun[p5] <= 8) {
         diagCand[p5] = 1;
       }
@@ -887,9 +1286,9 @@
     for (var cid5 = 1; cid5 <= cc5.count; cid5++) {
       var sx0 = cc5.minX[cid5], sx1 = cc5.maxX[cid5] + 1;
       var sy0 = cc5.minY[cid5], sy1 = cc5.maxY[cid5] + 1;
-      var sw = sx1 - sx0, sh = sy1 - sy0;
-      var span = Math.hypot(sw, sh);
-      if (sw >= 26 && sh >= 14 && (sw / Math.max(1, sh)) >= 1.10 && span >= 32) {
+      var sw5 = sx1 - sx0, sh5 = sy1 - sy0;
+      var span = Math.hypot(sw5, sh5);
+      if (sw5 >= 26 && sh5 >= 14 && (sw5 / Math.max(1, sh5)) >= 1.10 && span >= 32) {
         var sp0 = cc5.compStart[cid5], sp1 = cc5.compStart[cid5 + 1];
         var sn = sp1 - sp0;
         if (sn >= 15) {
@@ -913,19 +1312,17 @@
           }
           var corr = (varX > 1e-5 && varY > 1e-5) ? (covXY / Math.sqrt(varX * varY)) : 0;
           if (corr <= -0.94) {
-            // 5x5 dilation erase around each pixel of the slash component
             for (var si3 = sp0; si3 < sp1; si3++) {
               var spIdx3 = cc5.compPixels[si3];
-              var px = spIdx3 % w;
-              var py = (spIdx3 / w) | 0;
-              for (var dy = Math.max(0, py - 2); dy <= Math.min(h - 1, py + 2); dy++) {
-                var dRow = dy * w;
-                for (var dx = Math.max(0, px - 2); dx <= Math.min(w - 1, px + 2); dx++) {
-                  outLum[dRow + dx] = 255;
+              var px5 = spIdx3 % w;
+              var py5 = (spIdx3 / w) | 0;
+              for (var dy5 = Math.max(0, py5 - 2); dy5 <= Math.min(h - 1, py5 + 2); dy5++) {
+                var dRow5 = dy5 * w;
+                for (var dx5 = Math.max(0, px5 - 2); dx5 <= Math.min(w - 1, px5 + 2); dx5++) {
+                  outLum[dRow5 + dx5] = 255;
                 }
               }
             }
-            // Ray trace x = a * y + b
             var a = covXY / varY;
             var b = meanX - a * meanY;
             var yRayStart = Math.max(0, sy0 - 28);
@@ -945,20 +1342,46 @@
       }
     }
 
-    // Inter-row tilted clearance below & above checkboxes (1)-(10)
-    for (var cbi2 = 0; cbi2 < checkboxes.length; cbi2++) {
-      var cb2 = checkboxes[cbi2];
-      if (cb2.by0 < 140 || cb2.by0 > 515) continue;
-      var xLim = Math.min(w, cb2.bx1 + 180);
-      for (var ix2 = cb2.bx1 + 6; ix2 < xLim; ix2++) {
-        var dx2 = ix2 - cb2.bx1;
-        var rTop2 = Math.round(cb2.by0 - 4 - 0.026 * dx2);
-        var rBot2 = Math.round(cb2.by1 + 1 - 0.026 * dx2);
-        for (var gy = Math.min(h, rBot2 + 1); gy < Math.min(h, rBot2 + 42); gy++) {
-          outLum[gy * w + ix2] = 255;
-        }
-        for (var uy2 = Math.max(0, rTop2 - 18); uy2 < Math.max(0, rTop2 - 2); uy2++) {
-          outLum[uy2 * w + ix2] = 255;
+    // Clean small residual slash fragments sitting strictly in the blank inter-row gap between checkboxes
+    // (Replaces the old hardcoded 42px rect wipe — only removes small fragments rh <= 18, rw <= 25 that do NOT overlap any checkbox text row!)
+    if (checkboxes.length >= 2) {
+      var remBin = new Uint8Array(total);
+      for (var ir = 0; ir < total; ir++) {
+        if (outLum[ir] < 225) remBin[ir] = 1;
+      }
+      var ccRem = labelConnectedComponents8(remBin, w, h);
+      var cbMinY = h, cbMaxY = 0;
+      for (var icb = 0; icb < checkboxes.length; icb++) {
+        if (checkboxes[icb].by0 < cbMinY) cbMinY = checkboxes[icb].by0;
+        if (checkboxes[icb].by1 > cbMaxY) cbMaxY = checkboxes[icb].by1;
+      }
+      cbMinY -= 18;
+      cbMaxY += 35;
+
+      for (var cidR = 1; cidR <= ccRem.count; cidR++) {
+        var rx0 = ccRem.minX[cidR], rx1 = ccRem.maxX[cidR] + 1;
+        var ry0 = ccRem.minY[cidR], ry1 = ccRem.maxY[cidR] + 1;
+        var rw = rx1 - rx0, rh = ry1 - ry0;
+        if (ry0 >= cbMinY && ry1 <= cbMaxY && rh <= 18 && rw <= 25) {
+          var inAnyRow = false;
+          for (var icb2 = 0; icb2 < checkboxes.length; icb2++) {
+            var cb2 = checkboxes[icb2];
+            if (rx0 >= cb2.bx0 - 55 && rx0 <= cb2.bx1 + 210) {
+              var dx2 = Math.max(0, ((rx0 + rx1) * 0.5) - cb2.bx1);
+              var rowTop = cb2.by0 - 5 - 0.026 * dx2;
+              var rowBot = cb2.by1 + 2 - 0.026 * dx2;
+              if (ry1 > rowTop && ry0 < rowBot) {
+                inAnyRow = true;
+                break;
+              }
+            }
+          }
+          if (!inAnyRow) {
+            var rp0 = ccRem.compStart[cidR], rp1 = ccRem.compStart[cidR + 1];
+            for (var rpi = rp0; rpi < rp1; rpi++) {
+              outLum[ccRem.compPixels[rpi]] = 255;
+            }
+          }
         }
       }
     }
@@ -967,10 +1390,10 @@
     if (settings.autoHeaderMask) {
       var maskRatio = Number(settings.headerMaskRatio || 6.0) / 100;
       var maskH = Math.round(h * maskRatio);
-      for (var hy = 0; hy < Math.min(h, maskH); hy++) {
-        var hRow = hy * w;
-        for (var hx = 0; hx < w; hx++) {
-          outLum[hRow + hx] = 255;
+      for (var hy2 = 0; hy2 < Math.min(h, maskH); hy2++) {
+        var hRow = hy2 * w;
+        for (var hx2 = 0; hx2 < w; hx2++) {
+          outLum[hRow + hx2] = 255;
         }
       }
     }
