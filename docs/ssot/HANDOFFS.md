@@ -2,6 +2,9 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
+| 2026-10-27 | 文件 Bot | 專案經理 Bot／開發 Bot | BIBLE-DEV-0x | 已將四格分鏡永久規則寫入 grok-Jj 專案 05 README、DECISIONS、STATUS（預設主圖＋A4＋圖解漫畫；分鏡停用；舊期相容；唔出／唔匯出；齊備定義唔再要 7 項）。PRD §15 未改（等 GitHub 存取＋開發 Bot）。 | 開發 Bot 存取開通後改 PRD＋做「唔出／唔匯出」UI |
+| 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | Jessie 撤回 Lovable 路線：唔好裝／連 Lovable、唔好喺 Lovable 改。恢復經 GitHub／Cursor 改 → sync Lovable。等 Jessie 確認 GitHub repo 存取卡片後繼續。 | Jessie 確認存取後開發 Bot 即做 UI、更新 SSOT、回報 PM／Jj |
+| 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | ~~已撤回~~ 舊指示「改 Lovable／連接 Lovable」——Jessie 其後更正。以同行「撤回 Lovable 路線」紀錄為準。 | 無視 |
 | 2026-10-24 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-02 | 完成 CamScanner 式 100% 極簡全屏重做（PR #1 已合入 `main` `3539828`）。 | 已完成 |
 | 2026-10-24 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-03 | 完成 iOS Safari / GitHub Pages 緊急修復（PR #2 已合入 `main` `ec8233e`）。 | 已完成 |
 | 2026-10-25 | 開發 Bot | 驗收 / QA Bot | SCAN-DEV-04 | 完成「自動清答案」與「高清黑白」影像演算法徹底重構（`?v=3.2`）：(1) 自動偵測並提取截圖內白紙試卷區域（`detectPaperSubrectFromLum`），預設關閉盲目切頂部 9% 嘅 `autoHeaderMask`；(2) 局部自適應背景估算 + 對比度增強 + 2×2 筆畫連通加深，100% 保護頂部印刷題目與書包/人物插圖；(3) 結構化識別 12 個方格 `□` 清除手寫 `✓` 並重繪空心方格、識別傾斜填充橫線清除「學生手冊」「中國語文」並重繪橫線與對話框外框、清除對話框下大字「(課本)課本^」並修復書包左肩弧線、利用連通域線性回歸清除老師批改斜線 `/` 及右上角手寫班別姓名；(4) 新增「🧹 力度：輕柔 / 標準 / 強力」三段切換 UI（預覽區佔比 82.2% ≥ 75%，0px 溢出）。 | 請驗收 PR 並合入 `main` |
