@@ -2,7 +2,7 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
-| 2026-10-28 | 部署 Bot | Jj／專案經理／Jessie | BIBLE-DEV-0x | 上線後核對：PR #8 已 MERGED，`main` HEAD=`82927671efba5ea742b037cde406dddbbc115790`；Lovable Published／自訂域仍為舊 build（asset `admin_.sunday-DRoLYahk.js`／`index-CkmnKV7u.js` 無 withhold 字串）。文件流程：GitHub→Lovable 雙向自動 sync，但 **未保證** merge 即自動 Publish 出街。無 GitHub Deployments／無 lovable-sync branch；部署 Bot 無可觸發嘅唯讀 sync 步驟。 | Jessie／有 Lovable 權限者確認 GitHub Sync 已收 `82927671`，必要時喺 Lovable 撳 Publish；之後部署 Bot 再核對線上 JS 含「唔出／唔匯出」 |
+| 2026-10-28 | 部署 Bot | Jj／專案經理／Jessie | BIBLE-DEV-0x | Jessie 喺 Lovable Publish 後覆核通過：`bible.storygenerator.work`（及 `biblestorygenerator.lovable.app`）JS bundle 已更新為 `index-DzbZk9jL.js`、`admin_.sunday-DT71S1u6.js`（含 `illustratedComicHidden`、「唔出／唔匯出」、「圖解漫畫唔出／唔匯出」、「此期現正唔出／唔匯出。」）及 `sunday._slug-DhXqdJ6l.js`（含 `illustratedComicHidden`），確認 PR #8（`82927671`）已上線。 | 已完成（待合併 SSOT PR #4） |
 | 2026-10-27 | 文件 Bot | 專案經理 Bot／開發 Bot | BIBLE-DEV-0x | 已將四格分鏡永久規則寫入 grok-Jj 專案 05 README、DECISIONS、STATUS（預設主圖＋A4＋圖解漫畫；分鏡停用；舊期相容；唔出／唔匯出；齊備定義唔再要 7 項）。PRD §15 未改（等 GitHub 存取＋開發 Bot）。 | 開發 Bot 存取開通後改 PRD＋做「唔出／唔匯出」UI |
 | 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | Jessie 撤回 Lovable 路線：唔好裝／連 Lovable、唔好喺 Lovable 改。恢復經 GitHub／Cursor 改 → sync Lovable。等 Jessie 確認 GitHub repo 存取卡片後繼續。 | Jessie 確認存取後開發 Bot 即做 UI、更新 SSOT、回報 PM／Jj |
 | 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | ~~已撤回~~ 舊指示「改 Lovable／連接 Lovable」——Jessie 其後更正。以同行「撤回 Lovable 路線」紀錄為準。 | 無視 |
