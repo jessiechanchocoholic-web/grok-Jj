@@ -1,6 +1,6 @@
 # 03 功課答案App
 
-- **狀態**：HW-UX-02 已上線（Jessie 已 Publish；主標題 `### 學生列式答案`）
+- **狀態**：HW-UX-02 **完成**（QA live PASS；Jessie 已 Publish；主標題 `### 學生列式答案`）
 - **最後更新**：2026-10-29（Asia/Hong_Kong）
 - **Live**：https://apptopub.com/app/homework-ans （AppToPub；繼續跟阿 Sir workflow）
 - **Canonical**：`/workspace/homework-app/Homework_ans.html`
@@ -41,4 +41,4 @@ Live 已由 Jessie Publish；一般唔使再 Publish。若要再出：開 https:
 - 同步：`Homework_ans_code.txt`、`功課答案速查-慳錢版.html`、`功課答案速查-慳錢版-code.txt`、`功課答案速查-自動縮圖版-code.txt`、`一鍵複製功課App-Code.html`
 
 ## 下一步
-QA 用面積列式真題抽樣驗「學生列式答案」格式。
+等 Jessie 批 [PR #6](https://github.com/jessiechanchocoholic-web/grok-Jj/pull/6) merge（唔好自行合）。

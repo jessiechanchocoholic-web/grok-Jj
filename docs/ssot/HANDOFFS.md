@@ -2,6 +2,7 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
+| 2026-10-29 | QA Bot | 專案經理 Bot | HW-UX-02 | live PASS（面積＋購物真題；deployment 據 QA：`595058f7`）。 | SSOT PR #6 等 Jessie 批 merge；勿自行合 |
 | 2026-10-29 | 專案經理 Bot | 開發 Bot | HW-UX-02 | 已分派。Jessie（經 Jj）：解釋後必須有醒目答案格（完整算式 → 多行 = 簡化 → 中文答案句連單位）；隱藏 thinking／唔顯示 code；AppToPub 不變；canonical `/workspace/homework-app/Homework_ans.html`。HW-UX-01 已 Publish live，但由本任務取代。 | 開發 Bot 改 prompt＋UI＋deliverables；完成後回 PM／Jj（Publish 步驟） |
 | 2026-10-29 | 開發 Bot | 專案經理／Jj／QA | HW-UX-01 | 完成：prompt 禁 thinking／code＋要求「### 列式步驟答案」；`sanitizeModelOutput`＋`.work-steps`；檔喺 homework-app／deliverables；分支 `docs/hw-ux-01-friendly-display` @ 79ff5b5。 | Jessie 喺 AppToPub 貼 code 後 Publish；QA 驗 live；Jessie 批 merge PR #5 |
 | 2026-10-29 | 專案經理 Bot | 開發 Bot | HW-UX-01 | Jessie（經 Jj）要求功課 App User Friendly：①隱藏／唔渲染完整 thinking；②數式題講解後必須有清晰列式步驟答案區塊；③thinking 內 code 完全唔顯示。約束：跟 AppToPub workflow，唔遷移 Cloudflare／外部 API；答對邏輯不變。 | 開發 Bot 改 AppToPub `homework-ans`（prompt／render／UI）；完成後回報 PM／Jj（改動點＋Jessie Publish 步驟）；QA 驗收 |
