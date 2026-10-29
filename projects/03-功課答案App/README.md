@@ -1,44 +1,44 @@
 # 03 功課答案App
 
-- **狀態**：HW-UX-01 已完成（等 Jessie 喺 AppToPub Publish）
+- **狀態**：HW-UX-02 **完成**（QA live PASS；Jessie 已 Publish；主標題 `### 學生列式答案`）
 - **最後更新**：2026-10-29（Asia/Hong_Kong）
 - **Live**：https://apptopub.com/app/homework-ans （AppToPub；繼續跟阿 Sir workflow）
+- **Canonical**：`/workspace/homework-app/Homework_ans.html`
+- **參考**：Jessie 第7題學生手寫（`/workspace/homework-app/hw-ux-02-student-format-ref.jpg`）
 
 ## 目標
-幫學生／老師快速睇功課答案；輸出顯示已優化：隱藏 thinking、唔顯示 code、數學題必有「列式步驟答案」。
+幫學生／老師快速睇功課答案；輸出跟香港小學學生列式；隱藏 thinking、唔顯示 code。
 
-## 已完成：HW-UX-01（Jessie 經 Jj → 專案經理 → 開發 Bot）
-1. **Thinking／推理**：prompt 禁止輸出；render 用 `sanitizeModelOutput` 剝 `<thinking>`／`<think>`／reasoning fence／「Thinking:」長段（串流＋complete）。
-2. **列式步驟答案**：prompt 要求每道數學題最後用 `### 列式步驟答案`；UI 用 `.work-steps`／`.work-steps-title` 醒目區塊。
-3. **Code 唔顯示**：剝／拆開 fenced code；CSS 隱藏殘餘 `<pre>`；數學用文字列式。
+## 已完成：HW-UX-02（Jessie 經 Jj → 專案經理 → 開發 Bot｜2026-10-29）
 
-約束：繼續 AppToPub／Poe workflow（唔遷移 Cloudflare／外部 API）。答對邏輯不變，只改顯示／prompt／UI。
+### 學生列式答案規格（對齊第7題；圓角方框內）
+```
+30 × 30 − 12 × 12 − 18 × 18 ÷ 2
+= 900 − 144 − 162
+= 756 − 162
+= 594
+右圖的面積是 594 cm²。
+```
+- 第一行：完整橫式算式
+- 其後每行以 `=` 開頭逐步簡化（`=` 垂直對齊）
+- 最後一行：完整中文答案句＋單位
 
-成功標準：一睇就見答案／列式步驟；唔使碌長 thinking；畫面冇 code 區塊。
-
-## Jessie Publish 步驟（AppToPub）
-1. 開 https://apptopub.com/app/homework-ans （或 AppToPub 入面「homework-ans」呢個 app）
-2. 用編輯／貼 code：貼上本地檔 **`/workspace/homework-app/Homework_ans.html`** 全部內容  
-   （或開 `一鍵複製功課App-Code.html` 撳「一鍵複製全部 Code」再貼）
-3. Preview 確認：答案卡有「列式步驟答案」醒目區、冇 thinking／code block
-4. 撳 **Publish** 上線
-
-## 改動摘要
-| 層 | 改動 |
+### 本地實作（以 canonical 磁碟為準｜Jj 最終版）
+| 層 | 內容 |
 |---|---|
-| Prompt | 禁 thinking／code block；數學必有 `### 列式步驟答案` |
-| Render | `sanitizeModelOutput` + `enhanceAnswerHtml`；串流／history 共用 |
-| CSS／UI | `.work-steps` 醒目區；隱藏殘餘 `pre` |
+| Prompt | 禁 thinking／code fence；文字／列式題必出 `### 學生列式答案`（格式如上）；UI 兼認舊標題「列式步驟答案／答案格」 |
+| CSS／UI | `.answer-box`／`.student-work`／`.work-steps` 圓角灰框；`.student-lines`＋`.eq-line.is-eq` 令 `=` 對齊；顯示標題優先「學生列式答案」 |
+| Sanitize | 保留 HW-UX-01 `sanitizeModelOutput`；`formatStudentWorkLines` 整理列式行 |
+
+約束：AppToPub／Poe workflow 不變；答對邏輯不變。homework-app 6 份 HTML/txt 同 deliverables md5 一致。
+
+## Publish
+Live 已由 Jessie Publish；一般唔使再 Publish。若要再出：開 https://apptopub.com/app/homework-ans → 貼 canonical 全文 → Preview → Publish。
 
 ## 完成品
 - [deliverables/功課答案速查-慳錢版.html](./deliverables/功課答案速查-慳錢版.html)
-- 本地 canonical：`/workspace/homework-app/Homework_ans.html`
-- 同步副本：`Homework_ans_code.txt`、`功課答案速查-慳錢版.html`、`功課答案速查-慳錢版-code.txt`、`功課答案速查-自動縮圖版-code.txt`、`一鍵複製功課App-Code.html`
-
-## 計劃（慳錢版，已完成）
-- 加模型選擇：`@GPT-4o-mini`／`@Claude-Haiku-5.5`（預設）／`@Claude-Sonnet-5.5`
-- 記住選擇（localStorage）、精簡 prompt、結果顯示邊個 AI 答
-- 自動縮圖（最長邊 1600px）避免傳送超時
+- Canonical：`/workspace/homework-app/Homework_ans.html`
+- 同步：`Homework_ans_code.txt`、`功課答案速查-慳錢版.html`、`功課答案速查-慳錢版-code.txt`、`功課答案速查-自動縮圖版-code.txt`、`一鍵複製功課App-Code.html`
 
 ## 下一步
-Jessie 喺 AppToPub Publish → QA 用真題抽樣驗顯示。
+等 Jessie 批 [PR #6](https://github.com/jessiechanchocoholic-web/grok-Jj/pull/6) merge（唔好自行合）。
