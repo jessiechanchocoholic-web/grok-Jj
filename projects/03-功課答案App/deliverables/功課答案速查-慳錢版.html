@@ -159,33 +159,98 @@
   .result-card code { background: transparent; padding: 0; font-size: inherit; font-family: inherit; color: inherit; }
   .result-card pre { display: none !important; }
   .result-card pre code { display: none !important; }
-  /* 列式步驟答案 — 一睇就見到 */
+  /* HW-UX-02：答案格／學生列式 — 圓角方框＋=垂直對齊（對齊 Jessie 第7題） */
+  .result-card .answer-box,
+  .result-card .student-work,
   .result-card .work-steps {
-    margin: 12px 0 16px;
-    padding: 0 0 4px;
-    background: linear-gradient(180deg, rgba(255, 107, 53, 0.08) 0%, var(--bg-accent) 28%);
-    border: 1px solid rgba(255, 107, 53, 0.28);
-    border-radius: var(--radius-sm);
+    margin: 14px 0 18px;
+    padding: 0 0 14px;
+    background: #F3F3F3;
+    border: 2px solid rgba(45, 27, 14, 0.18);
+    border-radius: 18px;
     overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7);
   }
+  html.dark .result-card .answer-box,
+  html.dark .result-card .student-work,
+  html.dark .result-card .work-steps {
+    background: var(--bg-accent);
+    border-color: rgba(245, 230, 216, 0.22);
+  }
+  .result-card h3.answer-box-title,
+  .result-card h3.student-work-title,
   .result-card h3.work-steps-title,
+  .result-card .answer-box > h3:first-child,
+  .result-card .student-work > h3:first-child,
   .result-card .work-steps > h3:first-child {
     margin: 0 0 8px !important;
-    padding: 10px 14px;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(255, 165, 0, 0.1));
-    border-left: 4px solid var(--accent);
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(255, 165, 0, 0.08));
+    border-bottom: 1px solid rgba(255, 107, 53, 0.22);
     color: var(--accent-dark);
     font-size: 15px;
     font-weight: 800;
   }
+  html.dark .result-card h3.answer-box-title,
+  html.dark .result-card h3.student-work-title,
   html.dark .result-card h3.work-steps-title,
+  html.dark .result-card .answer-box > h3:first-child,
+  html.dark .result-card .student-work > h3:first-child,
   html.dark .result-card .work-steps > h3:first-child { color: var(--accent-light); }
-  .result-card .work-steps > *:not(h3) { margin-left: 14px; margin-right: 14px; }
-  .result-card .work-steps ol,
-  .result-card .work-steps ul { padding-left: 22px; }
-  .result-card .work-steps p:last-child,
-  .result-card .work-steps ol:last-child,
-  .result-card .work-steps ul:last-child { margin-bottom: 12px; }
+  .result-card .answer-box .student-lines,
+  .result-card .student-work .student-lines,
+  .result-card .work-steps .student-lines {
+    margin: 2px 16px 4px;
+    padding: 4px 8px 2px;
+    font-family: "SF Mono", Menlo, Consolas, "Noto Sans Mono CJK TC", "Noto Sans TC", monospace;
+    font-size: 16px;
+    line-height: 1.9;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .result-card .answer-box .student-lines .eq-line,
+  .result-card .student-work .student-lines .eq-line,
+  .result-card .work-steps .student-lines .eq-line {
+    display: block;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  /* 其後以 = 開頭嘅行：hanging indent，令 = 垂直對齊 */
+  .result-card .answer-box .student-lines .eq-line.is-eq,
+  .result-card .student-work .student-lines .eq-line.is-eq,
+  .result-card .work-steps .student-lines .eq-line.is-eq {
+    padding-left: 1.15em;
+    text-indent: -1.15em;
+  }
+  .result-card .answer-box .student-lines .eq-line.is-first,
+  .result-card .student-work .student-lines .eq-line.is-first,
+  .result-card .work-steps .student-lines .eq-line.is-first {
+    padding-left: 0;
+    text-indent: 0;
+    font-weight: 700;
+  }
+  .result-card .answer-box .student-lines .final-line,
+  .result-card .student-work .student-lines .final-line,
+  .result-card .work-steps .student-lines .final-line {
+    display: block;
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(45, 27, 14, 0.12);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--accent-dark);
+    white-space: normal;
+  }
+  html.dark .result-card .answer-box .student-lines .final-line,
+  html.dark .result-card .student-work .student-lines .final-line,
+  html.dark .result-card .work-steps .student-lines .final-line { color: var(--accent-light); }
+  .result-card .answer-box > *:not(h3):not(.student-lines),
+  .result-card .student-work > *:not(h3):not(.student-lines),
+  .result-card .work-steps > *:not(h3):not(.student-lines) {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
   .result-card blockquote { border-left: 3px solid var(--accent); padding-left: 14px; margin: 8px 0; color: var(--text-secondary); }
   .result-card table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
   .result-card th,.result-card td { padding: 7px 10px; border: 1px solid var(--border); text-align: left; }
@@ -570,9 +635,16 @@
       '【輸出規則｜必須遵守】\n' +
       '- 用繁體中文，逐題清楚列出\n' +
       '- 唔好輸出任何 thinking／reasoning／內部推理／中間草稿／思考過程\n' +
-      '- 唔好輸出程式碼或 code block（唔好用三個反引號）；數學列式用普通文字或 markdown 列表／編號\n' +
+      '- 唔好輸出程式碼或 code block（唔好用三個反引號）；解釋同答案格用純文字\n' +
       '- 功課已有答案就指出啱定錯\n' +
-      '- 每道數學／列式題：先簡短解釋，最後必須用標題「### 列式步驟答案」列出乾淨列式同最終答案\n' +
+      '- 每道文字題／列式計算題：先可寫簡短解釋，之後必須出現「### 答案格」\n' +
+      '- 「### 答案格」內容必須嚴格如下（香港小學學生手寫列式，唔好用編號／列表／散亂步驟）：\n' +
+      '  第一行：完整一條橫式算式（例：30 × 30 − 12 × 12 − 18 × 18 ÷ 2）\n' +
+      '  其後每行以 = 開頭逐步簡化，= 要對齊（例：= 900 − 144 − 162）\n' +
+      '  再下一行繼續（例：= 756 − 162）\n' +
+      '  再下一行最終數值（例：= 594）\n' +
+      '  最後一行：完整中文答案句＋單位（例：右圖的面積是 594 cm²。）\n' +
+      '- 答案格必須出現喺每道文字／計算題；唔好只出散亂步驟\n' +
       '- 多頁要逐頁標明\n' +
       '- 直接俾答案同解釋，唔使開場白';
     usedModel = modelSelect.value;
@@ -799,7 +871,7 @@
     return d.innerHTML;
   }
 
-  /* HW-UX-01：剝 thinking／code fence，保留答案同列式文字 */
+  /* HW-UX-01／02：剝 thinking／code fence，保留答案格同列式文字 */
   function sanitizeModelOutput(raw) {
     var s = String(raw == null ? '' : raw);
     // 完整 XML-ish thinking／reasoning 標籤
@@ -825,24 +897,65 @@
     return s;
   }
 
-  /* 為「### 列式步驟答案」加醒目包裝 */
+  /* HW-UX-02：為「### 答案格」（兼舊「學生列式答案／列式步驟答案」）加圓角答案格＋=對齊 */
   function enhanceAnswerHtml(html) {
     var out = String(html || '');
-    out = out.replace(/<h3(\s[^>]*)?>\s*([^<]*列式步驟答案[^<]*)\s*<\/h3>/gi, function(_m, attrs, title) {
+    out = out.replace(/<h3(\s[^>]*)?>\s*([^<]*(?:答案格|學生列式答案|列式步驟答案)[^<]*)\s*<\/h3>/gi, function(_m, attrs, title) {
       attrs = attrs || '';
+      var clsAdd = 'answer-box-title student-work-title work-steps-title';
       if (/class\s*=/i.test(attrs)) {
         attrs = attrs.replace(/class\s*=\s*(["'])([^"']*)\1/i, function(__, q, c) {
-          return 'class=' + q + (c + ' work-steps-title').replace(/\s+/g, ' ').trim() + q;
+          return 'class=' + q + (c + ' ' + clsAdd).replace(/\s+/g, ' ').trim() + q;
         });
       } else {
-        attrs += ' class="work-steps-title"';
+        attrs += ' class="' + clsAdd + '"';
       }
-      return '<h3' + attrs + '>' + title + '</h3>';
+      var nice = /答案格/.test(title) ? title : '答案格';
+      return '<h3' + attrs + '>' + nice + '</h3>';
     });
-    out = out.replace(/(<h3[^>]*class="[^"]*work-steps-title[^"]*"[^>]*>[\s\S]*?<\/h3>)([\s\S]*?)(?=<h[123]\b|$)/gi, function(_m, h3, rest) {
-      return '<div class="work-steps">' + h3 + rest + '</div>';
+    out = out.replace(/(<h3[^>]*class="[^"]*(?:answer-box-title|student-work-title|work-steps-title)[^"]*"[^>]*>[\s\S]*?<\/h3>)([\s\S]*?)(?=<h[123]\b|$)/gi, function(_m, h3, rest) {
+      return '<div class="answer-box student-work work-steps">' + h3 + formatStudentWorkLines(rest) + '</div>';
     });
     return out;
+  }
+
+  function formatStudentWorkLines(restHtml) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = String(restHtml || '');
+    var text = (tmp.innerText || tmp.textContent || '').replace(/\r/g, '');
+    var rawLines = text.split('\n');
+    var lines = [];
+    for (var i = 0; i < rawLines.length; i++) {
+      var t = String(rawLines[i] || '').replace(/\s+$/g, '').trim();
+      if (!t) continue;
+      if (/^(答案格|學生列式答案|列式步驟答案)$/.test(t)) continue;
+      // 去掉列表符號殘餘
+      t = t.replace(/^[-*•]\s+/, '').replace(/^\d+[\.\)、]\s+/, '');
+      if (t) lines.push(t);
+    }
+    if (lines.length === 0) {
+      var cleaned = String(restHtml || '').replace(/^\s+|\s+$/g, '');
+      return cleaned || '';
+    }
+    var parts = [];
+    for (var j = 0; j < lines.length; j++) {
+      var line = lines[j];
+      var isLast = j === lines.length - 1;
+      var startsEq = /^=\s*/.test(line);
+      var looksFinal = isLast && !startsEq && /[\u4e00-\u9fff]/.test(line);
+      if (looksFinal) {
+        parts.push('<span class="final-line">' + escapeHtml(line) + '</span>');
+      } else if (startsEq) {
+        // 正規化：= 後面一個空格
+        var normalized = line.replace(/^=\s*/, '= ');
+        parts.push('<span class="eq-line is-eq">' + escapeHtml(normalized) + '</span>');
+      } else if (j === 0) {
+        parts.push('<span class="eq-line is-first">' + escapeHtml(line) + '</span>');
+      } else {
+        parts.push('<span class="eq-line">' + escapeHtml(line) + '</span>');
+      }
+    }
+    return '<div class="student-lines">' + parts.join('') + '</div>';
   }
 
   function stripToText(md) {
