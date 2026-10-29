@@ -159,7 +159,7 @@
   .result-card code { background: transparent; padding: 0; font-size: inherit; font-family: inherit; color: inherit; }
   .result-card pre { display: none !important; }
   .result-card pre code { display: none !important; }
-  /* HW-UX-02：答案格／學生列式 — 圓角方框＋=垂直對齊（對齊 Jessie 第7題） */
+  /* HW-UX-02：學生列式答案／答案格 — 圓角方框＋=垂直對齊（對齊 Jessie 第7題） */
   .result-card .answer-box,
   .result-card .student-work,
   .result-card .work-steps {
@@ -635,16 +635,16 @@
       '【輸出規則｜必須遵守】\n' +
       '- 用繁體中文，逐題清楚列出\n' +
       '- 唔好輸出任何 thinking／reasoning／內部推理／中間草稿／思考過程\n' +
-      '- 唔好輸出程式碼或 code block（唔好用三個反引號）；解釋同答案格用純文字\n' +
+      '- 唔好輸出程式碼或 code block（唔好用三個反引號）；解釋同學生列式答案用純文字\n' +
       '- 功課已有答案就指出啱定錯\n' +
-      '- 每道文字題／列式計算題：先可寫簡短解釋，之後必須出現「### 答案格」\n' +
-      '- 「### 答案格」內容必須嚴格如下（香港小學學生手寫列式，唔好用編號／列表／散亂步驟）：\n' +
+      '- 每道文字題／列式計算題：先可寫簡短解釋，之後必須出現「### 學生列式答案」\n' +
+      '- 「### 學生列式答案」內容必須嚴格如下（香港小學學生手寫列式，唔好用編號／列表／散亂步驟）：\n' +
       '  第一行：完整一條橫式算式（例：30 × 30 − 12 × 12 − 18 × 18 ÷ 2）\n' +
       '  其後每行以 = 開頭逐步簡化，= 要對齊（例：= 900 − 144 − 162）\n' +
       '  再下一行繼續（例：= 756 − 162）\n' +
       '  再下一行最終數值（例：= 594）\n' +
       '  最後一行：完整中文答案句＋單位（例：右圖的面積是 594 cm²。）\n' +
-      '- 答案格必須出現喺每道文字／計算題；唔好只出散亂步驟\n' +
+      '- 學生列式答案必須出現喺每道文字／計算題；唔好只出散亂步驟\n' +
       '- 多頁要逐頁標明\n' +
       '- 直接俾答案同解釋，唔使開場白';
     usedModel = modelSelect.value;
@@ -871,7 +871,7 @@
     return d.innerHTML;
   }
 
-  /* HW-UX-01／02：剝 thinking／code fence，保留答案格同列式文字 */
+  /* HW-UX-01／02：剝 thinking／code fence，保留學生列式答案／答案格同列式文字 */
   function sanitizeModelOutput(raw) {
     var s = String(raw == null ? '' : raw);
     // 完整 XML-ish thinking／reasoning 標籤
@@ -897,10 +897,10 @@
     return s;
   }
 
-  /* HW-UX-02：為「### 答案格」（兼舊「學生列式答案／列式步驟答案」）加圓角答案格＋=對齊 */
+  /* HW-UX-02：為「### 學生列式答案」（兼舊「列式步驟答案／答案格」）加圓角答案框＋=對齊 */
   function enhanceAnswerHtml(html) {
     var out = String(html || '');
-    out = out.replace(/<h3(\s[^>]*)?>\s*([^<]*(?:答案格|學生列式答案|列式步驟答案)[^<]*)\s*<\/h3>/gi, function(_m, attrs, title) {
+    out = out.replace(/<h3(\s[^>]*)?>\s*([^<]*(?:學生列式答案|列式步驟答案|答案格)[^<]*)\s*<\/h3>/gi, function(_m, attrs, title) {
       attrs = attrs || '';
       var clsAdd = 'answer-box-title student-work-title work-steps-title';
       if (/class\s*=/i.test(attrs)) {
@@ -910,7 +910,7 @@
       } else {
         attrs += ' class="' + clsAdd + '"';
       }
-      var nice = /答案格/.test(title) ? title : '答案格';
+      var nice = /學生列式答案/.test(title) ? title : '學生列式答案';
       return '<h3' + attrs + '>' + nice + '</h3>';
     });
     out = out.replace(/(<h3[^>]*class="[^"]*(?:answer-box-title|student-work-title|work-steps-title)[^"]*"[^>]*>[\s\S]*?<\/h3>)([\s\S]*?)(?=<h[123]\b|$)/gi, function(_m, h3, rest) {
@@ -928,7 +928,7 @@
     for (var i = 0; i < rawLines.length; i++) {
       var t = String(rawLines[i] || '').replace(/\s+$/g, '').trim();
       if (!t) continue;
-      if (/^(答案格|學生列式答案|列式步驟答案)$/.test(t)) continue;
+      if (/^(學生列式答案|列式步驟答案|答案格)$/.test(t)) continue;
       // 去掉列表符號殘餘
       t = t.replace(/^[-*•]\s+/, '').replace(/^\d+[\.\)、]\s+/, '');
       if (t) lines.push(t);
