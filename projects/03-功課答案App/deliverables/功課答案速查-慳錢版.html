@@ -156,9 +156,36 @@
   .result-card ul,.result-card ol { padding-left: 20px; margin: 6px 0; }
   .result-card li { margin: 3px 0; }
   .result-card strong { color: var(--accent); font-weight: 700; }
-  .result-card code { background: var(--bg-accent); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Courier New', monospace; }
-  .result-card pre { background: var(--bg-accent); padding: 10px 14px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0; }
-  .result-card pre code { background: none; padding: 0; }
+  .result-card code { background: transparent; padding: 0; font-size: inherit; font-family: inherit; color: inherit; }
+  .result-card pre { display: none !important; }
+  .result-card pre code { display: none !important; }
+  /* 列式步驟答案 — 一睇就見到 */
+  .result-card .work-steps {
+    margin: 12px 0 16px;
+    padding: 0 0 4px;
+    background: linear-gradient(180deg, rgba(255, 107, 53, 0.08) 0%, var(--bg-accent) 28%);
+    border: 1px solid rgba(255, 107, 53, 0.28);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .result-card h3.work-steps-title,
+  .result-card .work-steps > h3:first-child {
+    margin: 0 0 8px !important;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(255, 165, 0, 0.1));
+    border-left: 4px solid var(--accent);
+    color: var(--accent-dark);
+    font-size: 15px;
+    font-weight: 800;
+  }
+  html.dark .result-card h3.work-steps-title,
+  html.dark .result-card .work-steps > h3:first-child { color: var(--accent-light); }
+  .result-card .work-steps > *:not(h3) { margin-left: 14px; margin-right: 14px; }
+  .result-card .work-steps ol,
+  .result-card .work-steps ul { padding-left: 22px; }
+  .result-card .work-steps p:last-child,
+  .result-card .work-steps ol:last-child,
+  .result-card .work-steps ul:last-child { margin-bottom: 12px; }
   .result-card blockquote { border-left: 3px solid var(--accent); padding-left: 14px; margin: 8px 0; color: var(--text-secondary); }
   .result-card table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
   .result-card th,.result-card td { padding: 7px 10px; border: 1px solid var(--border); text-align: left; }
@@ -372,24 +399,80 @@
     fileInput.value = '';
   });
 
+  // 自動壓縮手機大相（最長邊 1600px、JPEG 0.8），避免 AppToPub 傳送超時卡死，同時保留清晰文字
+  function compressImageFile(file) {
+    return new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onerror = function() { resolve(null); };
+      reader.onload = function(ev) {
+        var dataUrl = ev.target.result;
+        var img = new Image();
+        img.onerror = function() {
+          resolve({ file: file, previewUrl: dataUrl });
+        };
+        img.onload = function() {
+          try {
+            var maxDim = 1600;
+            var w = img.naturalWidth || img.width;
+            var h = img.naturalHeight || img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w >= h) {
+                h = Math.round(h * (maxDim / w));
+                w = maxDim;
+              } else {
+                w = Math.round(w * (maxDim / h));
+                h = maxDim;
+              }
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            var compressedDataUrl = canvas.toDataURL('image/jpeg', 0.80);
+            canvas.toBlob(function(blob) {
+              if (!blob) {
+                resolve({ file: file, previewUrl: dataUrl });
+                return;
+              }
+              var baseName = (file.name || 'homework').replace(/\.[^.]+$/, '');
+              var compressedFile;
+              try {
+                compressedFile = new File([blob], baseName + '.jpg', { type: 'image/jpeg' });
+              } catch (_e) {
+                blob.name = baseName + '.jpg';
+                compressedFile = blob;
+              }
+              resolve({ file: compressedFile, previewUrl: compressedDataUrl });
+            }, 'image/jpeg', 0.80);
+          } catch (_err) {
+            resolve({ file: file, previewUrl: dataUrl });
+          }
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   function addFiles(files) {
-    var imgs = files.filter(function(f) { return f.type.startsWith('image/'); });
+    var imgs = files.filter(function(f) { return !f.type || f.type.startsWith('image/'); });
     if (imgs.length === 0) { showNotice('請選擇圖片檔案'); return; }
 
     var remaining = 4 - selectedFiles.length;
     if (remaining <= 0) { showNotice('最多只可以上傳 4 張相片'); return; }
     var toAdd = imgs.slice(0, remaining);
 
-    var loaded = 0;
-    toAdd.forEach(function(file) {
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        selectedFiles.push(file);
-        previewUrls.push(ev.target.result);
-        loaded++;
-        if (loaded === toAdd.length) renderGrid();
-      };
-      reader.readAsDataURL(file);
+    Promise.all(toAdd.map(compressImageFile)).then(function(results) {
+      results.forEach(function(item) {
+        if (item) {
+          selectedFiles.push(item.file);
+          previewUrls.push(item.previewUrl);
+        }
+      });
+      renderGrid();
     });
   }
 
@@ -460,14 +543,14 @@
     }
     if (msg.status === 'incomplete') {
       loadingSection.style.display = 'none';
-      currentContent = msg.content;
-      renderCurrentResult(msg.content, false);
+      currentContent = sanitizeModelOutput(msg.content);
+      renderCurrentResult(currentContent, false);
       return;
     }
     if (msg.status === 'complete') {
       loadingSection.style.display = 'none';
-      currentContent = msg.content;
-      renderCurrentResult(msg.content, true);
+      currentContent = sanitizeModelOutput(msg.content);
+      renderCurrentResult(currentContent, true);
       isAnalyzing = false;
     }
   });
@@ -484,10 +567,14 @@
 
     var pageWord = selectedFiles.length > 1 ? selectedFiles.length + '頁' : '呢張';
     var prompt = '請睇' + pageWord + '功課相片，逐題俾正確答案同簡短解釋。\n' +
+      '【輸出規則｜必須遵守】\n' +
       '- 用繁體中文，逐題清楚列出\n' +
+      '- 唔好輸出任何 thinking／reasoning／內部推理／中間草稿／思考過程\n' +
+      '- 唔好輸出程式碼或 code block（唔好用三個反引號）；數學列式用普通文字或 markdown 列表／編號\n' +
       '- 功課已有答案就指出啱定錯\n' +
-      '- 數學要列式同顯示計算步驟\n' +
-      '- 多頁要逐頁標明';
+      '- 每道數學／列式題：先簡短解釋，最後必須用標題「### 列式步驟答案」列出乾淨列式同最終答案\n' +
+      '- 多頁要逐頁標明\n' +
+      '- 直接俾答案同解釋，唔使開場白';
     usedModel = modelSelect.value;
 
     try {
@@ -512,8 +599,9 @@
   /* ── Render current result ── */
   function renderCurrentResult(content, isComplete) {
     currentResult.style.display = 'block';
+    var clean = sanitizeModelOutput(content);
     var parsed = '';
-    try { parsed = marked.parse(content || ''); } catch (_e) { parsed = (content || '').replace(/\n/g, '<br>'); }
+    try { parsed = enhanceAnswerHtml(marked.parse(clean || '')); } catch (_e) { parsed = (clean || '').replace(/\n/g, '<br>'); }
 
     var iconHtml = isComplete
       ? '<div class="icon-circle ok"><i class="fas fa-check"></i></div>'
@@ -710,11 +798,62 @@
     d.textContent = s;
     return d.innerHTML;
   }
+
+  /* HW-UX-01：剝 thinking／code fence，保留答案同列式文字 */
+  function sanitizeModelOutput(raw) {
+    var s = String(raw == null ? '' : raw);
+    // 完整 XML-ish thinking／reasoning 標籤
+    s = s.replace(/<(thinking|think|reasoning|reflection|scratchpad|antthinking|inner_monologue|thought)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
+    // 串流中途未關閉嘅同名標籤：由開標籤去到結尾
+    s = s.replace(/<(thinking|think|reasoning|reflection|scratchpad|antthinking|inner_monologue|thought)\b[^>]*>[\s\S]*$/gi, '');
+    // 標籤 thinking／reasoning 嘅 fenced block
+    s = s.replace(/```(?:thinking|reasoning|thought|reflection|scratchpad|thoughts)[^\n]*\n[\s\S]*?```/gi, '');
+    s = s.replace(/```(?:thinking|reasoning|thought|reflection|scratchpad|thoughts)[^\n]*\n[\s\S]*$/gi, '');
+    // 其餘 fenced code：拆開 fence，保留入面文字（數學列式唔靠 code block）
+    s = s.replace(/```[\w+-]*[^\n]*\n?([\s\S]*?)```/g, function(_m, inner) {
+      return '\n' + String(inner || '').replace(/\s+$/, '') + '\n';
+    });
+    s = s.replace(/```[\w+-]*[^\n]*\n?([\s\S]*)$/g, function(_m, inner) {
+      return '\n' + String(inner || '');
+    });
+    // 過長 inline code（短嘅如變數名可留）
+    s = s.replace(/`([^`\n]{40,})`/g, '$1');
+    // 行首 Thinking:／Reasoning:／思考過程 等長段
+    s = s.replace(/(^|\n)(?:Thinking|Reasoning|Inner\s*monologue|思考過程|推理過程|內心獨白)\s*[:：][^\n]*(?:\n(?!\s*(?:#{1,3}\s|[-*•]|\d+[\.\)、]|第\s*\d))[^\n]*)*/gi, '$1');
+    // 多餘空行
+    s = s.replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    return s;
+  }
+
+  /* 為「### 列式步驟答案」加醒目包裝 */
+  function enhanceAnswerHtml(html) {
+    var out = String(html || '');
+    out = out.replace(/<h3(\s[^>]*)?>\s*([^<]*列式步驟答案[^<]*)\s*<\/h3>/gi, function(_m, attrs, title) {
+      attrs = attrs || '';
+      if (/class\s*=/i.test(attrs)) {
+        attrs = attrs.replace(/class\s*=\s*(["'])([^"']*)\1/i, function(__, q, c) {
+          return 'class=' + q + (c + ' work-steps-title').replace(/\s+/g, ' ').trim() + q;
+        });
+      } else {
+        attrs += ' class="work-steps-title"';
+      }
+      return '<h3' + attrs + '>' + title + '</h3>';
+    });
+    out = out.replace(/(<h3[^>]*class="[^"]*work-steps-title[^"]*"[^>]*>[\s\S]*?<\/h3>)([\s\S]*?)(?=<h[123]\b|$)/gi, function(_m, h3, rest) {
+      return '<div class="work-steps">' + h3 + rest + '</div>';
+    });
+    return out;
+  }
+
   function stripToText(md) {
-    return (md || '').replace(/[#*_`~>\-|[\]()!]/g, '').replace(/\n+/g, ' ').trim();
+    return sanitizeModelOutput(md || '').replace(/[#*_`~>\-|[\]()!]/g, '').replace(/\n+/g, ' ').trim();
   }
   function safeMarkdown(content) {
-    try { return marked.parse(content || ''); } catch (_e) { return escapeHtml(content || ''); }
+    try {
+      return enhanceAnswerHtml(marked.parse(sanitizeModelOutput(content || '')));
+    } catch (_e) {
+      return escapeHtml(sanitizeModelOutput(content || ''));
+    }
   }
   function formatTime(d) {
     var h = d.getHours();
