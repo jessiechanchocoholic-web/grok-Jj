@@ -18,10 +18,11 @@
 3. **「唔出／唔匯出」**：圖解漫畫生成完後，用家可揀唔出／唔匯出（數量或細節唔準時）。屬永久 UI 規則，跟 BIBLE-DEV-0x 一齊寫入實作。
 4. **發佈「齊備」**：跟新預設（主圖＋A4＋圖解漫畫等），**唔再要求**完整一期＝7 項（含 4 格分鏡）。
 
-> 備註：`biblestorygenerator/docs/PRD.md` §15 仍滯後（寫「完整一期＝7 項」）。grok-Jj 以本頁為準；PRD 交開發 Bot 喺 GitHub 存取開通後一併改。
+> 備註：PR #8（`82927671`）已更新 `docs/PRD.md` §15（發佈門檻主圖＋A4；圖解漫畫「唔出／唔匯出」），並已隨 Lovable Publish 同步上線（2026-10-28 部署覆核通過）。
 
 ## 狀態
 
 - 2026-10-22：PR #1–#6（單張生成、主圖置中放大、漫畫修正生效、隱藏 11/8 圖解漫畫、最後晚餐 13 人等經文人數鎖定）已合併上線。
 - 2026-10-23：PR #7（`cc1e327`）已合併上線——主日福音預設改為只生「3 張主圖 + 1 張 A4 塗色線稿 + 圖解漫畫」，全面飛走 4 格分鏡圖（每期自動慳 3 張圖 Credits，舊期數已發佈分鏡仍向下相容顯示）；同時強化主圖與圖解漫畫「一擊即中」提示詞（2×2 清晰 4 格、禁止單格重複耶穌/角色、主圖純畫面禁亂碼字、擴充至 27 項常見主日福音人數及道具鎖定）。
-- 2026-10-27：永久規則已寫入本 README 及 grok-Jj SSOT（DECISIONS／STATUS／HANDOFFS）。BIBLE-DEV-0x 仍阻塞——恢復圖解漫畫「唔出／唔匯出」掣（只 UI，經 GitHub／Cursor → sync Lovable）+ 更新 private repo `docs/PRD.md` §15；等 Jessie 確認 GitHub repo 存取後由開發 Bot 做。
+- 2026-10-27：永久規則已寫入本 README 及 grok-Jj SSOT（DECISIONS／STATUS／HANDOFFS）。
+- 2026-10-28：BIBLE-DEV-0x **已完成並上線**——PR #8 已 merge（`82927671`），Jessie 於 Lovable Publish 後，部署 Bot 覆核 `bible.storygenerator.work` 新 bundle（`admin_.sunday-DT71S1u6.js`、`sunday._slug-DhXqdJ6l.js`、`index-DzbZk9jL.js`）已包含 `illustratedComicHidden` 及「唔出／唔匯出」控制。
