@@ -2,6 +2,7 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
+| 2026-10-29 | 專案經理 Bot | 開發 Bot | HW-UX-01 | Jessie（經 Jj）要求功課 App User Friendly：①隱藏／唔渲染完整 thinking；②數式題講解後必須有清晰列式步驟答案區塊；③thinking 內 code 完全唔顯示。約束：跟 AppToPub workflow，唔遷移 Cloudflare／外部 API；答對邏輯不變。 | 開發 Bot 改 AppToPub `homework-ans`（prompt／render／UI）；完成後回報 PM／Jj（改動點＋Jessie Publish 步驟）；QA 驗收 |
 | 2026-10-27 | 文件 Bot | 專案經理 Bot／開發 Bot | BIBLE-DEV-0x | 已將四格分鏡永久規則寫入 grok-Jj 專案 05 README、DECISIONS、STATUS（預設主圖＋A4＋圖解漫畫；分鏡停用；舊期相容；唔出／唔匯出；齊備定義唔再要 7 項）。PRD §15 未改（等 GitHub 存取＋開發 Bot）。 | 開發 Bot 存取開通後改 PRD＋做「唔出／唔匯出」UI |
 | 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | Jessie 撤回 Lovable 路線：唔好裝／連 Lovable、唔好喺 Lovable 改。恢復經 GitHub／Cursor 改 → sync Lovable。等 Jessie 確認 GitHub repo 存取卡片後繼續。 | Jessie 確認存取後開發 Bot 即做 UI、更新 SSOT、回報 PM／Jj |
 | 2026-10-27 | 專案經理 Bot | 開發 Bot | BIBLE-DEV-0x | ~~已撤回~~ 舊指示「改 Lovable／連接 Lovable」——Jessie 其後更正。以同行「撤回 Lovable 路線」紀錄為準。 | 無視 |
