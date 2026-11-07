@@ -1,5 +1,7 @@
 # 03 功課答案App
 
+> **2026-11-08 搬平台**：現用 Cloudflare Worker `hw-answer`（https://hw-answer.jessiechan.workers.dev，repo `homework-ans`，Poe API `Claude-Haiku-5.5`）。下面 AppToPub 內容係舊紀錄，已停用。詳見 [`docs/HOSTING.md`](../../docs/HOSTING.md)。
+
 - **狀態**：HW-UX-02 **完成**（QA live PASS；Jessie 已 Publish；主標題 `### 學生列式答案`）
 - **最後更新**：2026-10-29（Asia/Hong_Kong）
 - **Live**：https://apptopub.com/app/homework-ans （AppToPub；繼續跟阿 Sir workflow）

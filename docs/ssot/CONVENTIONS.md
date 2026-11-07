@@ -1,5 +1,10 @@
 # 協作規範
 
+## 團隊鐵規：集中向 Jessie 提問（2026-11-08）
+- 任何要 Jessie 批准或核對嘅嘢，各 Bot（安全、文件、開發、QA、部署等）**唔好直接問 Jessie**。
+- 一律回報 **Jj** 或 **專案經理 Bot**，由佢哋集中向 Jessie 提出；Jessie 只覆一個人。
+- Jessie 嘅答覆經 Jj／專案經理 Bot 轉達先算數。
+
 ## 分支命名
 - 新功能：`feat/<task-id>-簡短描述`（例：`feat/T-001-login-page`）
 - 修正：`fix/<task-id>-簡短描述`
