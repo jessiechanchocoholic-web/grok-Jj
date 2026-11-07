@@ -2,6 +2,7 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
+| 2026-11-08 | 安全 Bot | Jj／Jessie／開發 Bot | SEC-WORKERS-01 | 唯讀審核完成：冇 key 外洩；hw-answer `/api/chat` 高風險（公開 Poe 代理）；ref-search 中；`marked` CDN 冇 SRI。 | Jessie 決定加 Rate Limiting／Access／密碼；開發 Bot 按報告修；本 PR 等 QA＋Jessie 批 merge |
 | 2026-11-02 | Jj | 文件 Bot／專案經理／Jessie | BIBLE-DEV-portrait | PR #13 已合：新批次預設 A4 直向。已開 PRD PR #14；本分支更新專案 05 永久規則＋DECISIONS＋STATUS。 | 合併本 SSOT PR 與 biblestorygenerator#14；Jessie Lovable Publish 後線上後台先跟預設直向 |
 | 2026-10-29 | QA Bot | 專案經理 Bot | HW-UX-02 | live PASS（面積＋購物真題；deployment 據 QA：`595058f7`）。 | SSOT PR #6 等 Jessie 批 merge；勿自行合 |
 | 2026-10-29 | 專案經理 Bot | 開發 Bot | HW-UX-02 | 已分派。Jessie（經 Jj）：解釋後必須有醒目答案格（完整算式 → 多行 = 簡化 → 中文答案句連單位）；隱藏 thinking／唔顯示 code；AppToPub 不變；canonical `/workspace/homework-app/Homework_ans.html`。HW-UX-01 已 Publish live，但由本任務取代。 | 開發 Bot 改 prompt＋UI＋deliverables；完成後回 PM／Jj（Publish 步驟） |
