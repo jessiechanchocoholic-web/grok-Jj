@@ -15,7 +15,7 @@
 | c) 靜態檔 | 通過 | 低：`/api/download-package` 公開原始碼 zip（冇密鑰） |
 | d) 相依套件 | 低：jsDelivr `marked` 冇 SRI、冇鎖版本 | 通過：npm audit 0 漏洞；Google Fonts 只係 CSS |
 
-**有高風險：功課 App `/api/chat` 任何人都可以用你嘅 Poe 點數。**
+**原本有高風險（功課 App `/api/chat` 冇保護）；已由 PR #3 加密碼緩解，見文末「更新」。**
 
 ## a) Key 外洩
 
@@ -60,3 +60,26 @@
 
 - ref-search：`npm audit --package-lock-only` → 0 漏洞。外部只有 Google Fonts CSS（無 script）。
 - hw-answer：冇 npm 依賴；`public/index.html` 第 9 行由 jsDelivr 載入 `marked`，**冇鎖版本、冇 SRI** → 低至中風險（CDN／套件被入侵可執行任意 JS）。輸出經 `marked.parse` 後寫入 `innerHTML`（約第 743–758 行），內容嚟自 AI 回應，屬低風險 XSS 面。建議鎖版本＋加 `integrity`／`crossorigin`，或者自行 host，並考慮 DOMPurify。
+
+## 更新（2026-11-08）：功課 App 已加密碼（homework-ans PR #3）
+
+唯讀審核 [homework-ans PR #3](https://github.com/jessiechanchocoholic-web/homework-ans/pull/3)（head `7b7d8ac`，已合併入 `main` 為 `5a1f3d6`）。
+
+- **驗證做法**：前端彈出密碼框，學生輸入後存喺瀏覽器 `localStorage`（key `hw_app_password`），每次請求用 header `X-App-Password` 傳去 Worker；Worker 回 401 時前端清走並要求重新輸入。
+- **常數時間比對**：有。`src/worker.js` `safeEqual()` 先將兩邊做 SHA-256，再用 `crypto.subtle.timingSafeEqual` 比對（長度唔同都唔會洩漏時間差）。
+- **密碼存放**：伺服器端讀 `env.APP_PASSWORD`（Worker secret）；`wrangler.jsonc` 冇列出、repo 全歷史搜過冇明文密碼。前端程式碼冇寫死密碼。
+- **有冇封晒 /api**：有。Worker 只有 `/api/chat` 一個 API，驗證喺讀取 body 同用 Poe key 之前；未設 `APP_PASSWORD` 時回 503（fail-closed，唔會變成冇密碼都用到）。
+- **部署狀態**：已合併並已部署。線上無害測試（空 body、錯密碼）都回 503「老師未設定 APP_PASSWORD」→ **線上 Worker secret `APP_PASSWORD` 仲未設定，學生而家用唔到 `/api/chat`**。冇發任何扣點數請求。
+
+### 殘餘風險
+- 共用密碼：任何知道密碼嘅人（學生轉傳）都可用；冇限流，所以密碼外流後仍可大量用 Poe 點數。（中）
+- 密碼以明文存喺學生裝置 `localStorage`，共用電腦上其他人睇得到。（低）
+- PR #3 同時刪咗 15MB 請求大小上限（`MAX_BYTES`），而家 body 冇上限（Cloudflare 平台本身仍有上限）；仍可揀 Sonnet、冇 `max_tokens`。（低–中）
+- 錯誤密碼冇次數限制，弱密碼可被暴力猜中 → 建議用長密碼（例如 12 字以上）。（中）
+- `marked` CDN 冇 SRI 仍未改。（低–中）
+
+### Jessie 決定（風險已接受）
+- 功課 App：**唔加**限流、請求大小上限、`max_tokens` 上限；接受以上殘餘風險。
+- 資料搜尋器（ref-search）：**維持現狀**，接受第 b) 節所列中風險（冇驗證、冇限流）。
+
+更新後評級：功課 App `/api/chat` 由「高」降為「中（已接受）」；資料搜尋器「中（已接受）」。
