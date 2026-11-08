@@ -5,6 +5,9 @@
 - 一律回報 **Jj** 或 **專案經理 Bot**，由佢哋集中向 Jessie 提出；Jessie 只覆一個人。
 - Jessie 嘅答覆經 Jj／專案經理 Bot 轉達先算數。
 
+## 檔案系統鐵規（2026-11-08）
+傾偈→Jj；做嘢→Cursor；搵嘢→總目錄 Page＋本 repo；唔再開多 Bot 分檔。
+
 ## 分支命名
 - 新功能：`feat/<task-id>-簡短描述`（例：`feat/T-001-login-page`）
 - 修正：`fix/<task-id>-簡短描述`
