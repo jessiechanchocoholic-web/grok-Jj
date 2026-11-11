@@ -4,6 +4,7 @@
 
 | ID | 任務 | 負責 Bot | 狀態 | 更新日期 | 備註 |
 |---|---|---|---|---|---|
+| SS-GOODSHEPHERD-1111 | 主日學「善牧耶穌」PPT 加細節版＋A4 棉花小羊工作紙 | 文件 Bot | 審查中 | 2026-11-11 | PPT 加細節版＝完成（保留原圖；第 2、3、5、6、7、9、10、11、13、15、16 頁加教案文字咭；第 9 頁答案要撳先出）。檔案：`/workspace/slides/good-shepherd-detail-ppQdmc/善牧耶穌_主日學_加細節版.pptx`；教案 `lesson.pdf` 喺同一資料夾（`/workspace/slides/good-shepherd-detail-ppQdmc/lesson.pdf`，工作紙資料夾有相同副本）。工作紙：`/workspace/worksheet-lamb-MdelDL/善牧小羊工作紙_A4.pdf`——QA 已查冇錯字；「光環改唔改、寫名指示等」待 Jessie 決定（經 Jj／專案經理 Bot 問，唔好直接問 Jessie）。Skill：「主日學教案轉PPT」(ppt)。來源：Jj 2026-11-11 轉達（專案經理 Bot 派工）。 |
 | SEC-WORKERS-01 | 安全審核：功課 App＋資料搜尋器（Cloudflare Workers + Poe） | 安全 Bot | 審查中 | 2026-11-08 | 報告 `SECURITY_REVIEW_workers.md`。冇 key 外洩。hw-answer 已加 APP_PASSWORD（PR #3 已合併），高風險降為中（Jessie 接受殘餘風險）；ref-search 中（已接受）。線上 `APP_PASSWORD` secret 未設定，`/api/chat` 回 503。 |
 | BIBLE-DEV-portrait | 主日圖新批次預設改 A4 直向 + PRD／SSOT 對齊 | Jj／文件 | 進行中 | 2026-11-02 | 程式 PR #13 已合入 `main`（`066a7fa`）。PRD 對齊：[biblestorygenerator#14](https://github.com/jessiechanchocoholic-web/biblestorygenerator/pull/14)。本 SSOT PR 跟進永久規則。 |
 | SCAN-DEV-02 | 試卷掃描清答案 App：100% CamScanner 式極簡全屏重做（無限文檔庫 IndexedDB + 連續快拍 + 四角透視裁切 + 4大濾鏡 + 浮動手動塗改 + Web Share/PDF預覽/下載位置指引） | 開發 Bot | 完成 | 2026-10-24 | PR #1 已通過 QA 審查並合入 `main` (`3539828`) |

@@ -2,6 +2,7 @@
 
 | 日期 | 從 | 到 | 任務 ID | 內容 | 下一步 |
 |---|---|---|---|---|---|
+| 2026-11-11 | Jj | 文件 Bot | SS-GOODSHEPHERD-1111 | 主日學「善牧耶穌」已完成兩樣，記入工作紀錄。1) PPT 加細節版（保留原圖；第 2、3、5、6、7、9、10、11、13、15、16 頁加教案文字咭；第 9 頁答案要撳先出）：`/workspace/slides/good-shepherd-detail-ppQdmc/善牧耶穌_主日學_加細節版.pptx`；教案 `lesson.pdf` 同一資料夾。2) A4 棉花小羊工作紙：`/workspace/worksheet-lamb-MdelDL/善牧小羊工作紙_A4.pdf`（QA 已查冇錯字）。Skill：「主日學教案轉PPT」(ppt)。來源：專案經理 Bot 派工，Jj 2026-11-11 轉達。 | 光環改唔改、寫名指示等經 Jj／專案經理 Bot 問 Jessie；本 PR 等 Jessie 批先 merge。唔好直接問 Jessie。 |
 | 2026-11-08 | 安全 Bot | Jj／Jessie | SEC-WORKERS-01 | 更新：唯讀審 homework-ans PR #3（APP_PASSWORD，已合併 `5a1f3d6`）：Worker secret＋SHA-256＋timingSafeEqual，封晒 `/api/chat`；線上已部署但 secret 未設定 → 回 503（App 暫停用）。Jessie 接受唔加限流／容量／max_tokens；ref-search 維持現狀（風險已接受）。 | Jessie 喺 Cloudflare 設 `APP_PASSWORD` secret；本 PR 等 QA＋Jessie 批 merge |
 | 2026-11-08 | 安全 Bot | Jj／Jessie／開發 Bot | SEC-WORKERS-01 | 唯讀審核完成：冇 key 外洩；hw-answer `/api/chat` 高風險（公開 Poe 代理）；ref-search 中；`marked` CDN 冇 SRI。 | Jessie 決定加 Rate Limiting／Access／密碼；開發 Bot 按報告修；本 PR 等 QA＋Jessie 批 merge |
 | 2026-11-08 | Jj | 文件 Bot | PLATFORM-MOVE-1108 | Jessie 經 Jj：2026-11-07/08 搬平台完成，寫入 SSOT（見 `docs/HOSTING.md`）。 | 已記錄；待辦：Poe 年費 2027-03-08 前決定 AI 來源 |
