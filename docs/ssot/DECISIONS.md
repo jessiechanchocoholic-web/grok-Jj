@@ -4,6 +4,7 @@ Jessie 審批狀態：待審批 / 已批准 / 已否決
 
 | 日期 | 決定 | 提出者 | Jessie 審批狀態 | 理由 |
 |---|---|---|---|---|
+| 2026-11-13 | 團隊鐵規：只有專案經理 Bot 一個可以問 Jessie 嘢或叫佢覆；開發、QA、安全、文件、部署 Bot 同 Jj 所有問題、批准申請同報告一律發畀專案經理 Bot，唔准直接同 Jessie 講。取代 2026-11-08「經 Jj 或專案經理 Bot 集中問」版本（Jj 唔再係提問渠道）。寫入 CONVENTIONS。 | 專案經理 Bot（Jessie 已定） | 已批准 | Jessie 只經專案經理 Bot 一個渠道提問／覆 |
 | 2026-11-08 | 團隊鐵規：要批准或核對嘅嘢唔好直接問 Jessie，一律經 Jj 或專案經理 Bot 集中提出（寫入 CONVENTIONS） | Jj（Jessie 已定） | 已批准 | Jessie 只覆一個人 |
 | 2026-11-08 | 搬平台：功課 App、教理講授資料搜尋器改用 Cloudflare Workers（子網域 `jessiechan.workers.dev`，舊 `jessiechanchocoholic.workers.dev` 停用）＋Poe API；舊 GitHub Pages／AppToPub 功課版停用。闖關遊戲、掃描器維持 GitHub Pages；教案、DSE、聖經工作室維持 Lovable。唔改 GitHub 用戶名。 | Jj（Jessie 已定） | 已批准 | 隱藏 GitHub 用戶名、統一後台 |
 | 2026-11-02 | 主日福音圖**新批次預設 A4 直向**（後台「全部圖片方向」；PR #13）。舊圖不變；重生成跟已存 orientation。PRD／專案 05 README／SSOT 必須保持，唔使再問。 | Jj（Jessie 已定） | 已批准 | 閃卡列印；永久產品規則 |
