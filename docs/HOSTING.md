@@ -2,6 +2,8 @@
 
 Cloudflare 帳戶子網域：`jessiechan.workers.dev`（舊 `jessiechanchocoholic.workers.dev` 已停用）。唔改 GitHub 用戶名。
 
+檔案系統鐵規：傾偈→Jj；做嘢→Cursor；搵嘢→總目錄 Page＋本 repo；唔再開多 Bot 分檔。
+
 | App | 平台 | Repo | 網址 | 備註 |
 |---|---|---|---|---|
 | 功課 App | Cloudflare Worker `hw-answer` | `homework-ans`（前端 `public/`＋`src/worker.js`） | https://hw-answer.jessiechan.workers.dev | Poe API；secret `POE_API_KEY`；`MODEL=Claude-Haiku-5.5`；PR #1、#2 已合（後台＋列式方框修正）。舊 GitHub Pages／AppToPub 版停用 |

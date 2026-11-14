@@ -1,10 +1,12 @@
 # 03 功課答案App
 
-> **2026-11-08 搬平台**：現用 Cloudflare Worker `hw-answer`（https://hw-answer.jessiechan.workers.dev，repo `homework-ans`，Poe API `Claude-Haiku-5.5`）。下面 AppToPub 內容係舊紀錄，已停用。詳見 [`docs/HOSTING.md`](../../docs/HOSTING.md)。
-
-- **狀態**：HW-UX-02 **完成**（QA live PASS；Jessie 已 Publish；主標題 `### 學生列式答案`）
-- **最後更新**：2026-10-29（Asia/Hong_Kong）
-- **Live**：https://apptopub.com/app/homework-ans （AppToPub；繼續跟阿 Sir workflow）
+- **狀態**：已上線（Cloudflare Workers；HW-UX-02 已完成）
+- **最後更新**：2026-11-08
+- **Live**：https://hw-answer.jessiechan.workers.dev（Cloudflare Worker `hw-answer`；repo `homework-ans`；Poe API `Claude-Haiku-5.5`）
+- **密碼**：有 `APP_PASSWORD`（Worker secret；值唔入 repo）
+- **限制**：唔限流、唔限容量、唔限答案長度
+- **寄存說明**：[`docs/HOSTING.md`](../../docs/HOSTING.md)
+- **舊平台**：AppToPub https://apptopub.com/app/homework-ans 已停用。下面 HW-UX 小節係舊紀錄。
 - **Canonical**：`/workspace/homework-app/Homework_ans.html`
 - **參考**：Jessie 第7題學生手寫（`/workspace/homework-app/hw-ux-02-student-format-ref.jpg`）
 
@@ -32,10 +34,10 @@
 | CSS／UI | `.answer-box`／`.student-work`／`.work-steps` 圓角灰框；`.student-lines`＋`.eq-line.is-eq` 令 `=` 對齊；顯示標題優先「學生列式答案」 |
 | Sanitize | 保留 HW-UX-01 `sanitizeModelOutput`；`formatStudentWorkLines` 整理列式行 |
 
-約束：AppToPub／Poe workflow 不變；答對邏輯不變。homework-app 6 份 HTML/txt 同 deliverables md5 一致。
+約束（2026-10-29 當時範圍）：跟當時 AppToPub／Poe workflow；答對邏輯不變。homework-app 6 份 HTML/txt 同 deliverables md5 一致。現況已搬 Cloudflare，見頂部。
 
-## Publish
-Live 已由 Jessie Publish；一般唔使再 Publish。若要再出：開 https://apptopub.com/app/homework-ans → 貼 canonical 全文 → Preview → Publish。
+## Publish（舊 AppToPub，已停用）
+下面步驟只適用舊平台。現況見頂部 Cloudflare Live，同 [`docs/HOSTING.md`](../../docs/HOSTING.md)。舊步驟：開 https://apptopub.com/app/homework-ans → 貼 canonical 全文 → Preview → Publish。
 
 ## 完成品
 - [deliverables/功課答案速查-慳錢版.html](./deliverables/功課答案速查-慳錢版.html)
