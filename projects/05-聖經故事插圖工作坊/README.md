@@ -57,7 +57,7 @@
 | 2026-12-08（二）08:00 | 聖母無玷始胎（香港教區主保） | `/workspace/fb-batch-2026-11-21/saints/2026-12-08-immaculate-conception.jpg` | 窗內新入 |
 | 2026-12-09（三）08:00 | 推廣（構想 A） | `/workspace/fb-promo-1209/v2/concept-a-advent-3steps.jpg`（已核對：1080×1350 JPEG） | 窗內新入。構想 B 未採用（`/workspace/fb-promo-1209/v2/concept-b-classroom-atmosphere.jpg`）。構想 A 文案（包括「今日亦係主教座堂奉獻慶日」括號句）一字不改；推廣帖網址前唔加 👉 |
 | 2026-12-12（六）08:00 | 將臨期第三主日備課 | `/workspace/fb-batch-2026-11-21/2026-12-12-adv3-prep-witness.jpg` | 只更新排位文案（圖、時間不變）。金句已用思高若 1:8 全文「只是為給那光作證」 |
-| 2026-12-13（日）08:00 | 將臨期第三主日（喜樂主日）輪播 | 先前入稿：`/workspace/fb-meta-pack/v2/2026-12-13-advent-wreath-joy-3lit-youth.jpg` ＋ `/workspace/fb-meta-pack/12-13-adv3-main.png`（見 `/workspace/fb-meta-enter-1213.md`；本批定稿／交接標今次無改） | 已在 Meta，今次無改排位／文案。金句仍是「只是為光作證」，**待 Jessie 決定（經專案經理 Bot 提問）**要不要改成思高全文「只是為給那光作證」 |
+| 2026-12-13（日）08:00 | 將臨期第三主日（喜樂主日）輪播 | 先前入稿：`/workspace/fb-meta-pack/v2/2026-12-13-advent-wreath-joy-3lit-youth.jpg` ＋ `/workspace/fb-meta-pack/12-13-adv3-main.png`（見 `/workspace/fb-meta-enter-1213.md`） | 專案經理 Bot 轉達（2026-11-22）：Jessie 已批金句，由 Jj 喺 Meta 改為思高全文「他不是那光，只是為給那光作證。」（若 1:8）。圖、輪播次序、HKT 08:00 同公開設定不變。講解用語「若翰唔搶光，只為光作證」同「做『為光作證』嘅小行動」保留。截圖：`/workspace/fb-meta-enter-2026-11-22/1213-caption.png`、`/workspace/fb-meta-enter-2026-11-22/1213-scheduled-list.png`（已核對存在）。 |
 | 2026-12-16（三）08:00 | 喜樂金句 | `/workspace/fb-batch-2026-11-21/2026-12-16-joy-quote-card-v3.jpg` | 只更新排位文案（圖、時間不變；確認用 v3）。金句用思高若 1:8 全文。此則無 hashtag |
 | 2026-12-17（四）08:00 | 大對經開始｜上主的智慧 | `/workspace/fb-batch-2026-11-21/saints/2026-12-17-o-sapientia.jpg`（已核對：1080×1350 JPEG；3:4 原圖 `saints/source-3x4/2026-12-17-o-sapientia-3x4.jpg`） | 窗內新入。定稿為建議版，金句依以賽亞 11:2。舊葉瑟樹稿（依 11:1，圖 `saints/2026-12-17-o-antiphons.jpg`）未採用，保留備查 |
 | 2026-12-19（六）08:00 | 將臨期第四主日備課 | `/workspace/fb-batch-2026-11-21/2026-12-19-adv4-prep-willing.jpg` | 只更新排位文案（圖、時間不變） |
@@ -87,9 +87,12 @@
 |---|---|---|
 | 2027-01-11（一）08:00 | 工作室推廣｜常年期再起步 | 文案已定稿（已按 layout-rules 乙補慣用三行 CTA：完整網址無 👉，hashtag 緊接）。圖**未定**，臨近先交 Jessie 睇（經專案經理 Bot），唔用舊截圖，暫不入 Meta。 |
 
-### 待 Jessie 決定（經專案經理 Bot 提問）
+### 12/13 金句已決（2026-11-22）
 
-- **12/13 金句**：現時文案仍是「只是為光作證」（見 `/workspace/fb-meta-enter-1213.md`）。要不要改成思高全文「只是為給那光作證」（12/12、12/16 已用此全文）尚未決定。本批定稿／交接標 12/13 今次無改排位，冇寫呢項決定。
+- 專案經理 Bot 轉達（2026-11-22）：Jessie 已批，由 Jj 喺 Meta 改為思高全文「他不是那光，只是為給那光作證。」（若 1:8）。
+- 圖、輪播次序、出帖 HKT 08:00 同公開設定不變。
+- 「若翰唔搶光，只為光作證」同「做『為光作證』嘅小行動」係講解用語，保留。
+- 截圖（已核對存在，只記路徑，唔入本 repo）：`/workspace/fb-meta-enter-2026-11-22/1213-caption.png`、`/workspace/fb-meta-enter-2026-11-22/1213-scheduled-list.png`。
 
 ### 未採用（唔好入 Meta）
 
