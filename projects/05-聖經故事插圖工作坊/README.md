@@ -48,10 +48,10 @@
 
 | 出帖（HKT） | 類型／主題 | 圖路徑 | 今次動作 |
 |---|---|---|---|
-| 2026-11-25（三）08:00 | （先前已排；交接未列主題） | — | 已在 Meta，今次無改排位／文案 |
+| 2026-11-25（三）08:00 | 將臨期前導｜認識將臨環（四枝，三紫一粉，無中央白燭） | `/workspace/fb-meta-pack/v2/2026-11-25-advent-wreath-youth.jpg`（已核對存在，3508×2480 JPEG；專案經理 Bot 轉達，來源：`/workspace/fb-handover-2026-11-14.md`：Jessie 交青少年版） | 較早前已入 Meta，今次無改文案同圖。公開、HKT 08:00。文案：`/workspace/fb-meta-pack/v2/caption-2026-11-25-advent.txt`。金句：依 9:1。 |
 | 2026-11-29（日）08:00 | 將臨期第一主日 | — | 已在 Meta，今次無改排位／文案 |
 | 2026-11-30（一）08:00 | 聖安德肋宗徒慶日 | `/workspace/fb-batch-2026-11-21/saints/2026-11-30-st-andrew.jpg` | 窗內新入（當時最急） |
-| 2026-12-02（三）08:00 | （先前已排；交接未列主題） | — | 已在 Meta，今次無改排位／文案 |
+| 2026-12-02（三）08:00 | 將臨期第一主日跟進｜第1枝紫色蠟燭 | `/workspace/fb-meta-pack/v2/2026-12-02-advent-wreath-hope-1lit-youth.jpg`（已核對存在，3508×2480 JPEG；專案經理 Bot 轉達，來源：`/workspace/fb-handover-2026-11-14.md`：Jessie 交，只亮第1枝） | 較早前已入 Meta，今次無改文案同圖。公開、HKT 08:00。文案：`/workspace/fb-meta-pack/v2/caption-2026-12-02-advent.txt`。金句：谷 13:37。 |
 | 2026-12-03（四）08:00 | 聖方濟．沙勿略司鐸慶日（香港教區） | `/workspace/fb-batch-2026-11-21/saints/2026-12-03-st-francis-xavier.jpg` | 窗內新入 |
 | 2026-12-06（日）08:00 | 將臨期第二主日 | — | 已在 Meta，今次無改排位／文案 |
 | 2026-12-08（二）08:00 | 聖母無玷始胎（香港教區主保） | `/workspace/fb-batch-2026-11-21/saints/2026-12-08-immaculate-conception.jpg` | 窗內新入 |
